@@ -12,14 +12,18 @@ export class Participant {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
+  /** Linked login account (profiles.id). Null after account deletion. */
+  @Column({ name: "profile_id", type: "uuid", nullable: true })
+  profileId!: string | null;
+
   @Column({ type: "text" })
   name!: string;
 
   @Column({ name: "school_id", type: "uuid", nullable: true })
   schoolId!: string | null;
 
-  @Column({ name: "phone_number", type: "text", nullable: true })
-  phoneNumber!: string | null;
+  @Column({ name: "photo_url", type: "text", nullable: true })
+  photoUrl!: string | null;
 
   @Column({ type: "text", nullable: true })
   description!: string | null;

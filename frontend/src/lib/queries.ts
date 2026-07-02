@@ -1,0 +1,521 @@
+"use client";
+
+// Data hooks — SAME signatures as the old Supabase version, but every call
+// now hits the NestJS API (same-origin /api/*, proxied by next.config).
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { api } from "@/lib/api-client";
+import type {
+  AdminStats,
+  AppSettings,
+  DailyVoteSeriesRow,
+  ParticipantContent,
+  ParticipantWithSchool,
+  PointHistoryRow,
+  Profile,
+  Quest,
+  School,
+  Submission,
+  TopSupporter,
+  TopVoter,
+  VoterGrowthRow,
+} from "@/types/database";
+
+const qs = (params: Record<string, string | number | undefined | null>) => {
+  const search = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== "") search.set(k, String(v));
+  }
+  const s = search.toString();
+  return s ? `?${s}` : "";
+};
+
+// ----------------------------- Profile ------------------------------
+export function useMyProfile() {
+  return useQuery({
+    queryKey: ["profile", "me"],
+    queryFn: async (): Promise<Profile | null> => {
+      try {
+        const { user } = await api<{
+          user: { sub: string; role: Profile["role"]; name?: string };
+        }>("/api/auth/me");
+        return {
+          id: user.sub,
+          name: user.name ?? "",
+          phone_number: "",
+          school_id: null,
+          role: user.role,
+          device_fingerprint: null,
+          created_at: "",
+        };
+      } catch {
+        return null;
+      }
+    },
+  });
+}
+
+// --------------------------- Admin voters ---------------------------
+export type AdminVoter = {
+  voter_phone: string;
+  voter_name: string;
+  voter_email: string | null;
+  voter_status: string | null;
+  voter_school: string | null;
+  voter_class: string | null;
+  votes: number;
+  quests: number;
+  points: number;
+  first_seen: string | null;
+  last_seen: string | null;
+};
+
+export type VoterFilters = {
+  participantId?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+  status?: string;
+  school?: string;
+  limit?: number;
+  offset?: number;
+  sort?: "recent" | "points_desc" | "points_asc";
+};
+
+function voterQs(f: VoterFilters) {
+  return {
+    participant_id: f.participantId,
+    from: f.from,
+    to: f.to,
+    search: f.search,
+    status: f.status,
+    school: f.school,
+  };
+}
+
+export function useAdminVoters(filters: VoterFilters) {
+  return useQuery({
+    queryKey: ["admin-voters", filters],
+    queryFn: () =>
+      api<AdminVoter[]>(
+        `/api/admin/voters${qs({
+          ...voterQs(filters),
+          limit: filters.limit ?? 25,
+          offset: filters.offset ?? 0,
+          sort: filters.sort ?? "recent",
+        })}`,
+      ),
+  });
+}
+
+export function useAdminVotersCount(filters: VoterFilters) {
+  return useQuery({
+    queryKey: ["admin-voters-count", { ...filters, limit: 0, offset: 0 }],
+    queryFn: () =>
+      api<number>(`/api/admin/voters/count${qs(voterQs(filters))}`),
+  });
+}
+
+/** All voters matching the filters (no paging) — for the Excel export. */
+export async function fetchAllAdminVoters(
+  filters: VoterFilters,
+): Promise<AdminVoter[]> {
+  const PAGE = 1000;
+  const all: AdminVoter[] = [];
+  for (let offset = 0; ; offset += PAGE) {
+    const batch = await api<AdminVoter[]>(
+      `/api/admin/voters${qs({
+        ...voterQs(filters),
+        limit: PAGE,
+        offset,
+        sort: filters.sort ?? "recent",
+      })}`,
+    );
+    all.push(...batch);
+    if (batch.length < PAGE) break;
+  }
+  return all;
+}
+
+export type PointLogRow = {
+  kind: "vote" | "quest";
+  source: string;
+  voter_name: string;
+  voter_phone: string;
+  points: number;
+  created_at: string;
+};
+
+export function useParticipantPointLog(participantId?: string) {
+  return useQuery({
+    queryKey: ["participant-point-log", participantId],
+    enabled: !!participantId,
+    queryFn: () =>
+      api<PointLogRow[]>(`/api/admin/participants/${participantId}/point-log`),
+  });
+}
+
+export function useParticipantSupporters(participantId?: string) {
+  return useQuery({
+    queryKey: ["participant-supporters", participantId],
+    enabled: !!participantId,
+    queryFn: () =>
+      api<AdminVoter[]>(`/api/admin/participants/${participantId}/supporters`),
+  });
+}
+
+export type ActivityLogRow = {
+  kind: "daily5" | "fav20" | "quest";
+  source: string;
+  voter_name: string;
+  voter_phone: string;
+  participant_name: string;
+  points: number;
+  status: string;
+  created_at: string;
+};
+
+export type ActivityFilters = {
+  kind?: string;
+  participantId?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+  qstatus?: string;
+  limit?: number;
+  offset?: number;
+};
+
+function activityQs(f: ActivityFilters) {
+  return {
+    kind: f.kind || "all",
+    participant_id: f.participantId,
+    from: f.from,
+    to: f.to,
+    search: f.search,
+    qstatus: f.qstatus,
+  };
+}
+
+export function useActivityLog(filters: ActivityFilters) {
+  return useQuery({
+    queryKey: ["activity-log", filters],
+    queryFn: () =>
+      api<ActivityLogRow[]>(
+        `/api/admin/activity-log${qs({
+          ...activityQs(filters),
+          limit: filters.limit ?? 30,
+          offset: filters.offset ?? 0,
+        })}`,
+      ),
+  });
+}
+
+export function useActivityLogCount(filters: ActivityFilters) {
+  return useQuery({
+    queryKey: ["activity-log-count", { ...filters, limit: 0, offset: 0 }],
+    queryFn: () =>
+      api<number>(`/api/admin/activity-log/count${qs(activityQs(filters))}`),
+  });
+}
+
+export type VoterDistRow = {
+  participant_id: string;
+  participant_name: string;
+  school_name: string | null;
+  votes: number;
+  quests: number;
+  points: number;
+};
+
+export function useVoterDistribution(phone?: string) {
+  return useQuery({
+    queryKey: ["voter-distribution", phone],
+    enabled: !!phone,
+    queryFn: () =>
+      api<VoterDistRow[]>(`/api/admin/voters/distribution${qs({ phone })}`),
+  });
+}
+
+// ----------------------------- Settings -----------------------------
+export function useSettings() {
+  return useQuery({
+    queryKey: ["settings"],
+    queryFn: () => api<AppSettings | null>("/api/public/settings"),
+  });
+}
+
+// ----------------------------- Schools ------------------------------
+export function useSchools() {
+  return useQuery({
+    queryKey: ["schools"],
+    queryFn: () => api<School[]>("/api/public/schools"),
+  });
+}
+
+export function useSchoolsWithParticipants() {
+  return useQuery({
+    queryKey: ["schools", "with-participants"],
+    queryFn: () =>
+      api<Pick<School, "id" | "name">[]>(
+        "/api/public/schools?with_participants=1",
+      ),
+  });
+}
+
+// --------------------------- Participants ----------------------------
+export function useParticipants(schoolId?: string | null) {
+  return useQuery({
+    queryKey: ["participants", schoolId ?? "all"],
+    queryFn: () =>
+      api<ParticipantWithSchool[]>(
+        `/api/public/participants${qs({ school_id: schoolId ?? undefined })}`,
+      ),
+  });
+}
+
+/** Admin list — includes the login phone number per participant. */
+export function useAdminParticipants() {
+  return useQuery({
+    queryKey: ["participants", "admin"],
+    queryFn: () => api<ParticipantWithSchool[]>("/api/admin/participants"),
+  });
+}
+
+export function useLeaderboard(limit = 50) {
+  return useQuery({
+    queryKey: ["leaderboard", limit],
+    queryFn: () =>
+      api<ParticipantWithSchool[]>(`/api/public/leaderboard${qs({ limit })}`),
+  });
+}
+
+export function useMyParticipant() {
+  return useQuery({
+    queryKey: ["participant", "me"],
+    queryFn: async (): Promise<ParticipantWithSchool | null> => {
+      try {
+        return await api<ParticipantWithSchool>("/api/participant/me");
+      } catch {
+        return null;
+      }
+    },
+  });
+}
+
+// ------------------------- Participant contents ----------------------
+export function useParticipantContents(participantId?: string) {
+  return useQuery({
+    queryKey: ["participant-contents", participantId],
+    enabled: !!participantId,
+    queryFn: () =>
+      api<ParticipantContent[]>(
+        `/api/public/participants/${participantId}/contents`,
+      ),
+  });
+}
+
+export function useDoneContentIds(
+  participantId: string,
+  questId: string,
+  email: string,
+) {
+  return useQuery({
+    queryKey: ["done-content", participantId, questId, email.toLowerCase()],
+    enabled: !!participantId && !!questId && !!email,
+    queryFn: () =>
+      api<string[]>(
+        `/api/public/done-content${qs({
+          participant_id: participantId,
+          quest_id: questId,
+          email,
+        })}`,
+      ),
+  });
+}
+
+/** The logged-in participant's own content links. */
+export function useMyContents() {
+  return useQuery({
+    queryKey: ["my-contents"],
+    queryFn: async (): Promise<ParticipantContent[]> => {
+      try {
+        return await api<ParticipantContent[]>("/api/participant/contents");
+      } catch {
+        return [];
+      }
+    },
+  });
+}
+
+// ------------------------------ Quests -------------------------------
+export function useQuests(activeOnly = false) {
+  return useQuery({
+    queryKey: ["quests", activeOnly],
+    queryFn: () =>
+      api<Quest[]>(`/api/public/quests${activeOnly ? "?active=1" : ""}`),
+  });
+}
+
+/** Admin CRUD list (same shape; separate for cache isolation). */
+export function useAdminQuests() {
+  return useQuery({
+    queryKey: ["quests", "admin"],
+    queryFn: () => api<Quest[]>("/api/admin/quests"),
+  });
+}
+
+// --------------------------- Submissions -----------------------------
+export type SubmissionRow = Submission & {
+  participants: {
+    name: string;
+    school_id: string;
+    schools: { name: string } | null;
+  } | null;
+  quests: { name: string; point: number; proof_type: string } | null;
+  participant_contents: { url: string; kind: string } | null;
+  submission_proofs: { url: string }[] | null;
+};
+
+export function useSubmissions(status?: string) {
+  return useQuery({
+    queryKey: ["submissions", status ?? "all"],
+    queryFn: () =>
+      api<SubmissionRow[]>(`/api/admin/submissions${qs({ status })}`),
+  });
+}
+
+export function useSubmissionCounts() {
+  return useQuery({
+    queryKey: ["submissions", "counts"],
+    queryFn: () =>
+      api<{ pending: number; approved: number; rejected: number; all: number }>(
+        "/api/admin/submissions/counts",
+      ),
+  });
+}
+
+type ReviewVars = {
+  id: string;
+  status: "approved" | "rejected";
+  note?: string;
+};
+
+export function useReviewSubmission() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status, note }: ReviewVars) =>
+      api(`/api/admin/submissions/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status, note }),
+      }),
+    // Optimistic: drop the item from pending lists + adjust counters.
+    onMutate: async ({ id, status }: ReviewVars) => {
+      await qc.cancelQueries({ queryKey: ["submissions"] });
+      const prevLists = qc.getQueriesData({ queryKey: ["submissions"] });
+      qc.setQueriesData({ queryKey: ["submissions"] }, (old: unknown) => {
+        if (!Array.isArray(old)) return old;
+        return old.filter((s) => (s as { id: string }).id !== id);
+      });
+      qc.setQueryData(
+        ["submissions", "counts"],
+        (
+          c:
+            | { pending: number; approved: number; rejected: number; all: number }
+            | undefined,
+        ) =>
+          c
+            ? {
+                ...c,
+                pending: Math.max(0, c.pending - 1),
+                approved: c.approved + (status === "approved" ? 1 : 0),
+                rejected: c.rejected + (status === "rejected" ? 1 : 0),
+              }
+            : c,
+      );
+      return { prevLists };
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.prevLists?.forEach(([key, val]) => qc.setQueryData(key, val));
+      qc.invalidateQueries({ queryKey: ["submissions", "counts"] });
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["participants"] });
+      qc.invalidateQueries({ queryKey: ["leaderboard"] });
+    },
+  });
+}
+
+// ----------------------------- Aggregates -----------------------------
+export function useAdminStats() {
+  return useQuery({
+    queryKey: ["admin-stats"],
+    queryFn: () => api<AdminStats>("/api/admin/stats"),
+  });
+}
+
+export function useDailyVoteSeries(days = 14) {
+  return useQuery({
+    queryKey: ["daily-vote-series", days],
+    queryFn: () =>
+      api<DailyVoteSeriesRow[]>(`/api/admin/vote-series${qs({ days })}`),
+  });
+}
+
+export function useVoterGrowth(days = 14) {
+  return useQuery({
+    queryKey: ["voter-growth", days],
+    queryFn: () =>
+      api<VoterGrowthRow[]>(`/api/admin/voter-growth${qs({ days })}`),
+  });
+}
+
+export function usePointHistory(participantId?: string) {
+  return useQuery({
+    queryKey: ["point-history", participantId],
+    enabled: !!participantId,
+    queryFn: () =>
+      api<PointHistoryRow[]>(
+        `/api/public/participants/${participantId}/point-history`,
+      ),
+  });
+}
+
+export function useMyRank(participantId?: string) {
+  return useQuery({
+    queryKey: ["my-rank", participantId],
+    enabled: !!participantId,
+    queryFn: () =>
+      api<number | null>(`/api/public/participants/${participantId}/rank`),
+  });
+}
+
+export function useTopSupporters(participantId?: string, limit = 10) {
+  return useQuery({
+    queryKey: ["top-supporters", participantId, limit],
+    enabled: !!participantId,
+    queryFn: () =>
+      api<TopSupporter[]>(
+        `/api/public/participants/${participantId}/top-supporters${qs({ limit })}`,
+      ),
+  });
+}
+
+export function useSupporterCount(participantId?: string) {
+  return useQuery({
+    queryKey: ["supporter-count", participantId],
+    enabled: !!participantId,
+    queryFn: () =>
+      api<number>(`/api/public/participants/${participantId}/supporter-count`),
+  });
+}
+
+export function useTopVoters(limit = 5) {
+  return useQuery({
+    queryKey: ["top-voters", limit],
+    queryFn: () => api<TopVoter[]>(`/api/public/top-voters${qs({ limit })}`),
+  });
+}
