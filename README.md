@@ -78,6 +78,10 @@ npm run dev                # http://localhost:3000  → /login → /dashboard
 | POST   | `/api/auth/login` | —            | login, keluarkan JWT   |
 | GET    | `/api/auth/me`    | JWT          | identitas token        |
 | GET    | `/api/admin/stats`| JWT + admin  | statistik dashboard    |
+| GET    | `/api/admin/vote-series?days=14` | JWT + admin | vote per hari (grafik) |
+| GET/POST | `/api/schools`  | JWT + admin  | list / find-or-create sekolah |
+| GET/POST | `/api/participants` | JWT + admin | list / tambah peserta |
+| PATCH/DELETE | `/api/participants/:id` | JWT + admin | edit / hapus peserta |
 
 ## Catatan
 

@@ -1,4 +1,11 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import {
+  Controller,
+  DefaultValuePipe,
+  Get,
+  ParseIntPipe,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
 import { AdminService } from "./admin.service";
 import { JwtGuard } from "../../common/guards/jwt.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
@@ -13,5 +20,12 @@ export class AdminController {
   @Get("stats")
   stats() {
     return this.admin.stats();
+  }
+
+  @Get("vote-series")
+  voteSeries(
+    @Query("days", new DefaultValuePipe(14), ParseIntPipe) days: number,
+  ) {
+    return this.admin.voteSeries(days);
   }
 }

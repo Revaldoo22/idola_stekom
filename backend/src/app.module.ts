@@ -4,6 +4,8 @@ import configuration from "./config/configuration";
 import { DatabaseModule } from "./database/database.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { AdminModule } from "./modules/admin/admin.module";
+import { SchoolsModule } from "./modules/schools/schools.module";
+import { ParticipantsModule } from "./modules/participants/participants.module";
 import { HealthModule } from "./modules/health/health.module";
 
 @Module({
@@ -12,6 +14,8 @@ import { HealthModule } from "./modules/health/health.module";
     DatabaseModule,
     AuthModule,
     AdminModule,
+    SchoolsModule,
+    ParticipantsModule,
     HealthModule,
   ],
 })
