@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Gift, Loader2, Smartphone, Ticket, Undo2 } from "lucide-react";
+import { Gift, Loader2, Radio, Smartphone, Ticket, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export default function AdminRafflePage() {
   const [prize, setPrize] = React.useState("Handphone");
   const [drawing, setDrawing] = React.useState(false);
   const [reveal, setReveal] = React.useState<Winner | null>(null);
+  const [liveOpen, setLiveOpen] = React.useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["raffle"],
@@ -142,7 +143,15 @@ export default function AdminRafflePage() {
               ) : (
                 <Smartphone className="h-5 w-5" />
               )}
-              {drawing ? "Mengundi..." : "Undi Pemenang"}
+              {drawing ? "Mengundi..." : "Undi Cepat"}
+            </Button>
+            <Button
+              size="lg"
+              variant="accent"
+              onClick={() => setLiveOpen(true)}
+              disabled={(data?.remaining ?? 0) === 0}
+            >
+              <Radio className="h-5 w-5" /> Mode Live
             </Button>
           </div>
 
@@ -217,6 +226,205 @@ export default function AdminRafflePage() {
           </div>
         )}
       </section>
+
+      {liveOpen && (
+        <LiveDraw
+          prize={prize.trim() || "Handphone"}
+          onClose={() => {
+            setLiveOpen(false);
+            qc.invalidateQueries({ queryKey: ["raffle"] });
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Sensor nomor WA untuk tayangan publik. */
+function maskPhone(p: string | null): string {
+  if (!p || p.length < 7) return p ?? "-";
+  return p.slice(0, 4) + "****" + p.slice(-3);
+}
+
+const CONFETTI_COLORS = ["#f97316", "#0891b2", "#22d3ee", "#fbbf24", "#34d399"];
+
+function Confetti() {
+  const pieces = React.useMemo(
+    () =>
+      Array.from({ length: 90 }, (_, i) => ({
+        left: Math.random() * 100,
+        delay: Math.random() * 0.8,
+        dur: 2.4 + Math.random() * 2,
+        size: 6 + Math.random() * 8,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        round: Math.random() > 0.5,
+      })),
+    [],
+  );
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {pieces.map((c, i) => (
+        <span
+          key={i}
+          className="absolute top-0"
+          style={{
+            left: `${c.left}%`,
+            width: c.size,
+            height: c.size * (c.round ? 1 : 0.45),
+            background: c.color,
+            borderRadius: c.round ? "9999px" : "2px",
+            animation: `confetti-fall ${c.dur}s linear ${c.delay}s forwards`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+type Stage = "idle" | "count" | "spin" | "reveal";
+
+/** Panggung undian layar penuh: countdown, shuffle nama melambat, reveal. */
+function LiveDraw({
+  prize,
+  onClose,
+}: {
+  prize: string;
+  onClose: () => void;
+}) {
+  const [stage, setStage] = React.useState<Stage>("idle");
+  const [count, setCount] = React.useState(3);
+  const [ticker, setTicker] = React.useState<string>("");
+  const [winner, setWinner] = React.useState<Winner | null>(null);
+  const alive = React.useRef(true);
+  React.useEffect(() => () => void (alive.current = false), []);
+
+  async function run() {
+    try {
+      setWinner(null);
+      // 1. Countdown 3..2..1
+      setStage("count");
+      for (let i = 3; i >= 1; i--) {
+        setCount(i);
+        await new Promise((r) => setTimeout(r, 900));
+        if (!alive.current) return;
+      }
+
+      // 2. Ambil kandidat + pemenang paralel; shuffle nama melambat
+      setStage("spin");
+      const [cands, res] = await Promise.all([
+        api<{ name: string; code: string }[]>("/api/admin/raffle/candidates"),
+        api<{ winner: Winner }>("/api/admin/raffle/draw", {
+          method: "POST",
+          body: JSON.stringify({ prize }),
+        }),
+      ]);
+      const pool =
+        cands.length > 0 ? cands : [{ name: res.winner.name ?? "?", code: "" }];
+      let delay = 55;
+      const start = Date.now();
+      while (Date.now() - start < 4600) {
+        setTicker(pool[Math.floor(Math.random() * pool.length)].name ?? "?");
+        await new Promise((r) => setTimeout(r, delay));
+        if (!alive.current) return;
+        delay = Math.min(360, delay * 1.07); // makin lambat, makin tegang
+      }
+      setTicker(res.winner.name ?? "?");
+      await new Promise((r) => setTimeout(r, 650));
+
+      // 3. Reveal + confetti
+      setWinner(res.winner);
+      setStage("reveal");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal mengundi.");
+      setStage("idle");
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col bg-[#06222e] text-white">
+      {/* Latar glow */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(700px circle at 50% 20%, rgba(8,145,178,0.35), transparent 60%), radial-gradient(600px circle at 80% 90%, rgba(249,115,22,0.18), transparent 60%)",
+        }}
+      />
+      {stage === "reveal" && <Confetti />}
+
+      <button
+        onClick={onClose}
+        className="absolute right-5 top-5 z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20"
+        aria-label="Tutup"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      <div className="relative z-[1] flex flex-1 flex-col items-center justify-center gap-6 p-6 text-center">
+        <p className="text-sm font-bold uppercase tracking-[0.3em] text-cyan-300">
+          Youth Character Summit
+        </p>
+        <h2 className="text-3xl font-extrabold sm:text-5xl">
+          Undian {prize}
+        </h2>
+
+        {stage === "idle" && (
+          <>
+            <p className="max-w-md text-white/70">
+              Pastikan layar ini yang dibagikan ke penonton. Klik mulai dan
+              biarkan nama-nama berputar.
+            </p>
+            <Button size="lg" variant="accent" onClick={run}>
+              <Radio className="h-5 w-5" /> Mulai Undian
+            </Button>
+          </>
+        )}
+
+        {stage === "count" && (
+          <p
+            key={count}
+            className="text-[9rem] font-extrabold leading-none text-accent"
+            style={{ animation: "ping 0.9s ease-out" }}
+          >
+            {count}
+          </p>
+        )}
+
+        {stage === "spin" && (
+          <div className="w-full max-w-2xl rounded-3xl border border-white/15 bg-white/5 px-6 py-14 backdrop-blur">
+            <p className="truncate text-4xl font-extrabold sm:text-6xl">
+              {ticker}
+            </p>
+          </div>
+        )}
+
+        {stage === "reveal" && winner && (
+          <div className="w-full max-w-2xl space-y-4 rounded-3xl border-2 border-accent bg-white/[0.07] px-6 py-12 backdrop-blur">
+            <p className="text-sm font-bold uppercase tracking-widest text-accent">
+              Selamat kepada
+            </p>
+            <p className="text-4xl font-extrabold sm:text-6xl">{winner.name}</p>
+            <p className="text-lg text-white/80">
+              {maskPhone(winner.phone_number)}
+            </p>
+            <p className="font-mono text-xl font-bold text-cyan-300">
+              {winner.code}
+            </p>
+            <div className="flex justify-center gap-3 pt-2">
+              <Button variant="accent" onClick={run}>
+                Undi Lagi
+              </Button>
+              <Button
+                variant="outline"
+                className="border-white/30 bg-transparent text-white hover:bg-white/10"
+                onClick={onClose}
+              >
+                Selesai
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

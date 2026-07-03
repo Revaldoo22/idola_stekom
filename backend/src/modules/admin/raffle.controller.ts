@@ -44,6 +44,16 @@ export class RaffleController {
     return { ...stats[0], winners };
   }
 
+  /** Sampel nama acak dari kolam (bahan animasi shuffle di mode live). */
+  @Get("candidates")
+  candidates() {
+    return this.db.query(`
+      select pr.name, c.code
+      from coupons c join profiles pr on pr.id = c.profile_id
+      where c.won_at is null
+      order by random() limit 60`);
+  }
+
   /** Tarik satu pemenang acak dari kupon yang belum menang. Atomik. */
   @Post("draw")
   async draw(@Body() dto: DrawDto) {
