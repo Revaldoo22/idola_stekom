@@ -4,7 +4,7 @@ import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const ADMIN_WA = "6282257425470"; // 082257425470
-const MESSAGE = "Halo Admin Festival Karakter Pelajar, saya butuh bantuan.";
+const MESSAGE = "Halo Admin Youth Character Summit, saya butuh bantuan.";
 
 export function ContactAdminButton({
   className,

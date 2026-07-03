@@ -17,11 +17,11 @@ function regionKey(name: string): string {
 
 /** Skala warna 5 tingkat berdasarkan rasio poin terhadap maksimum. */
 function fillColor(ratio: number): string {
-  if (ratio >= 0.8) return "#4338ca";
-  if (ratio >= 0.55) return "#6366f1";
-  if (ratio >= 0.3) return "#818cf8";
-  if (ratio >= 0.1) return "#c7d2fe";
-  if (ratio > 0) return "#e0e7ff";
+  if (ratio >= 0.8) return "#0e7490";
+  if (ratio >= 0.55) return "#0891b2";
+  if (ratio >= 0.3) return "#22d3ee";
+  if (ratio >= 0.1) return "#a5f3fc";
+  if (ratio > 0) return "#e0f7fa";
   return "#f1f5f9";
 }
 
@@ -95,10 +95,10 @@ export default function HeatmapMap() {
         <span className="font-medium text-foreground">Poin:</span>
         {[
           ["#f1f5f9", "0"],
-          ["#e0e7ff", "rendah"],
-          ["#818cf8", "sedang"],
-          ["#6366f1", "tinggi"],
-          ["#4338ca", "terpanas"],
+          ["#e0f7fa", "rendah"],
+          ["#22d3ee", "sedang"],
+          ["#0891b2", "tinggi"],
+          ["#0e7490", "terpanas"],
         ].map(([c, label]) => (
           <span key={label} className="flex items-center gap-1.5">
             <span

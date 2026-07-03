@@ -251,7 +251,7 @@ function validateVoter(data: VoterFormData): string | null {
 function ShareButton({ name }: { name: string }) {
   async function share() {
     const url = typeof window !== "undefined" ? window.location.href : "";
-    const text = `Dukung ${name} di Festival Karakter Pelajar STEKOM! 🔥`;
+    const text = `Dukung ${name} di Youth Character Summit STEKOM! 🔥`;
     if (navigator.share) {
       try {
         await navigator.share({ title: name, text, url });

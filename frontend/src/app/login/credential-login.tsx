@@ -55,7 +55,7 @@ export function CredentialLogin({
         <CardHeader className="text-center">
           <Link href="/" className="mx-auto flex items-center gap-2 font-bold">
             <GraduationCap className="h-7 w-7 text-primary" />
-            Festival Karakter Pelajar
+            Youth Character Summit
           </Link>
           <CardTitle className="pt-2 text-lg">{title}</CardTitle>
         </CardHeader>

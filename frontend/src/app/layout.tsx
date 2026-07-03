@@ -6,7 +6,7 @@ import { Providers } from "@/components/providers";
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-const title = "Festival Karakter Pelajar — Universitas STEKOM";
+const title = "Youth Character Summit — Universitas STEKOM";
 const description =
   "Platform kompetisi karakter pelajar SMA/SMK. Dukung peserta favoritmu dan menangkan smartphone, sertifikat, & jadi Duta Teladan STEKOM!";
 
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   title,
   description,
   keywords: [
-    "Festival Karakter Pelajar",
+    "Youth Character Summit",
     "STEKOM",
     "kompetisi pelajar",
     "voting",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title,
     description,
-    siteName: "Festival Karakter Pelajar STEKOM",
+    siteName: "Youth Character Summit STEKOM",
     type: "website",
     locale: "id_ID",
     url: siteUrl,

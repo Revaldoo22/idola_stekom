@@ -39,8 +39,8 @@ export function PointGrowthChart({
       <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
         <defs>
           <linearGradient id="pts" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="hsl(243 75% 59%)" stopOpacity={0.4} />
-            <stop offset="95%" stopColor="hsl(243 75% 59%)" stopOpacity={0} />
+            <stop offset="5%" stopColor="hsl(192 91% 36%)" stopOpacity={0.4} />
+            <stop offset="95%" stopColor="hsl(192 91% 36%)" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -54,7 +54,7 @@ export function PointGrowthChart({
         <Area
           type="monotone"
           dataKey="cumulative"
-          stroke="hsl(243 75% 59%)"
+          stroke="hsl(192 91% 36%)"
           fill="url(#pts)"
           strokeWidth={2}
         />
@@ -104,7 +104,7 @@ export function VoterGrowthChart({
         <Line
           type="monotone"
           dataKey="cumulative"
-          stroke="hsl(243 75% 59%)"
+          stroke="hsl(192 91% 36%)"
           strokeWidth={2}
           dot={false}
         />
@@ -135,7 +135,7 @@ export function TopParticipantsChart({
           tickFormatter={(n: string) => (n.length > 14 ? n.slice(0, 13) + "…" : n)}
         />
         <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v} poin`, "Total"]} />
-        <Bar dataKey="total_points" fill="hsl(243 75% 59%)" radius={[0, 4, 4, 0]} />
+        <Bar dataKey="total_points" fill="hsl(192 91% 36%)" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -156,7 +156,7 @@ export function IntentPieChart({
   const rows = data.map((d) => ({
     ...d,
     name: INTENT_META[d.intent]?.label ?? d.intent,
-    color: INTENT_META[d.intent]?.color ?? "hsl(243 75% 59%)",
+    color: INTENT_META[d.intent]?.color ?? "hsl(192 91% 36%)",
   }));
   return (
     <ResponsiveContainer width="100%" height={260}>
@@ -204,7 +204,7 @@ export function RegionBarChart({
           tickFormatter={(n: string) => (n.length > 16 ? n.slice(0, 15) + "…" : n)}
         />
         <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v} voter`, ""]} />
-        <Bar dataKey="count" fill="hsl(243 75% 59%)" radius={[0, 4, 4, 0]} />
+        <Bar dataKey="count" fill="hsl(192 91% 36%)" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

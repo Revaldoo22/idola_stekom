@@ -4,49 +4,50 @@
 
 @layer base {
   :root {
-    --background: 220 33% 98%;
-    --foreground: 229 45% 12%;
+    --background: 197 60% 97%;
+    --foreground: 198 74% 16%;
     --card: 0 0% 100%;
-    --card-foreground: 229 45% 12%;
+    --card-foreground: 198 74% 16%;
     --popover: 0 0% 100%;
-    --popover-foreground: 229 45% 12%;
-    /* Indigo-violet — modern, tetap profesional */
-    --primary: 243 75% 59%;
+    --popover-foreground: 198 74% 16%;
+    /* Youth Character Summit — cyan/teal (laut & langit Bali) */
+    --primary: 192 91% 36%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 226 40% 96%;
-    --secondary-foreground: 229 45% 12%;
-    --muted: 226 40% 96%;
-    --muted-foreground: 227 15% 45%;
-    --accent: 38 92% 50%;
-    --accent-foreground: 229 45% 12%;
+    --secondary: 196 55% 94%;
+    --secondary-foreground: 198 74% 16%;
+    --muted: 196 55% 94%;
+    --muted-foreground: 200 20% 42%;
+    /* Aksen oranye ceria ("11 Days 8 Night") */
+    --accent: 24 95% 53%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-    --border: 226 30% 90%;
-    --input: 226 30% 88%;
-    --ring: 243 75% 59%;
+    --border: 196 40% 88%;
+    --input: 196 40% 86%;
+    --ring: 192 91% 36%;
     --radius: 1rem;
   }
 
   .dark {
-    --background: 232 47% 6%;
-    --foreground: 220 30% 96%;
-    --card: 232 40% 9%;
-    --card-foreground: 220 30% 96%;
-    --popover: 232 40% 9%;
-    --popover-foreground: 220 30% 96%;
-    --primary: 243 85% 67%;
-    --primary-foreground: 232 47% 8%;
-    --secondary: 231 30% 16%;
-    --secondary-foreground: 220 30% 96%;
-    --muted: 231 30% 16%;
-    --muted-foreground: 226 18% 66%;
-    --accent: 38 92% 55%;
-    --accent-foreground: 232 47% 8%;
+    --background: 200 60% 7%;
+    --foreground: 195 40% 96%;
+    --card: 200 50% 10%;
+    --card-foreground: 195 40% 96%;
+    --popover: 200 50% 10%;
+    --popover-foreground: 195 40% 96%;
+    --primary: 190 90% 45%;
+    --primary-foreground: 200 60% 8%;
+    --secondary: 199 35% 16%;
+    --secondary-foreground: 195 40% 96%;
+    --muted: 199 35% 16%;
+    --muted-foreground: 197 20% 66%;
+    --accent: 24 95% 58%;
+    --accent-foreground: 200 60% 8%;
     --destructive: 0 63% 40%;
     --destructive-foreground: 210 40% 98%;
-    --border: 231 28% 18%;
-    --input: 231 28% 20%;
-    --ring: 243 85% 67%;
+    --border: 199 32% 18%;
+    --input: 199 32% 20%;
+    --ring: 190 90% 45%;
   }
 }
 

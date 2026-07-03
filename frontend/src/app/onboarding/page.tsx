@@ -170,7 +170,7 @@ export default function OnboardingPage() {
         <CardHeader className="space-y-4 text-center">
           <div className="mx-auto flex items-center gap-2 font-bold">
             <GraduationCap className="h-6 w-6 text-primary" />
-            Festival Karakter Pelajar
+            Youth Character Summit
           </div>
           <div>
             <h1 className="text-xl font-bold">Lengkapi Profilmu</h1>

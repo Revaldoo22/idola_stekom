@@ -97,7 +97,7 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
         </span>
         <span className="min-w-0">
           <span className="block truncate text-sm font-bold leading-tight">
-            Festival Karakter Pelajar
+            Youth Character Summit
           </span>
           <span className="block text-xs text-muted-foreground">
             Panel Admin

@@ -13,7 +13,7 @@ export function MaintenanceOverlay() {
           Sedang Dalam Perbaikan
         </h1>
         <p className="text-muted-foreground">
-          Website Festival Karakter Pelajar sedang dalam pemeliharaan sebentar.
+          Website Youth Character Summit sedang dalam pemeliharaan sebentar.
           Silakan kembali lagi nanti. Terima kasih atas pengertiannya 🙏
         </p>
       </div>

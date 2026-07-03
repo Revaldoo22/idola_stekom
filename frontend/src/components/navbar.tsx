@@ -64,9 +64,9 @@ export function Navbar({
             <GraduationCap className="h-5 w-5" />
           </span>
           <span className="hidden font-bold leading-tight sm:inline">
-            Festival Karakter Pelajar
+            Youth Character Summit
           </span>
-          <span className="font-bold sm:hidden">FKP</span>
+          <span className="font-bold sm:hidden">YCS</span>
         </Link>
 
         {/* Right side */}

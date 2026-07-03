@@ -33,7 +33,7 @@ export default function HomePage() {
           </div>
           <RoundCountdown />
           <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl">
-            Festival Karakter Pelajar
+            Youth Character Summit
           </h1>
           <p className="mx-auto max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             Dukung pelajar favoritmu! Pilih peserta di bawah, beri dukungan, dan
@@ -81,7 +81,7 @@ export default function HomePage() {
       </section>
 
       <footer className="border-t py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Festival Karakter Pelajar — Universitas
+        © {new Date().getFullYear()} Youth Character Summit — Universitas
         STEKOM.
       </footer>
     </div>
