@@ -27,12 +27,12 @@ export function PointGrowthChart({
       <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
         <defs>
           <linearGradient id="pts" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="hsl(221 83% 53%)" stopOpacity={0.4} />
-            <stop offset="95%" stopColor="hsl(221 83% 53%)" stopOpacity={0} />
+            <stop offset="5%" stopColor="hsl(243 75% 59%)" stopOpacity={0.4} />
+            <stop offset="95%" stopColor="hsl(243 75% 59%)" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} />
+        <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} minTickGap={24} tickMargin={6} />
         <YAxis fontSize={12} allowDecimals={false} />
         <Tooltip
           labelFormatter={(l) => fmtDay(l as string)}
@@ -41,7 +41,7 @@ export function PointGrowthChart({
         <Area
           type="monotone"
           dataKey="cumulative"
-          stroke="hsl(221 83% 53%)"
+          stroke="hsl(243 75% 59%)"
           fill="url(#pts)"
           strokeWidth={2}
         />
@@ -59,7 +59,7 @@ export function DailyVotesChart({
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} />
+        <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} minTickGap={24} tickMargin={6} />
         <YAxis fontSize={12} allowDecimals={false} />
         <Tooltip
           labelFormatter={(l) => fmtDay(l as string)}
@@ -80,7 +80,7 @@ export function VoterGrowthChart({
     <ResponsiveContainer width="100%" height={260}>
       <LineChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} />
+        <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} minTickGap={24} tickMargin={6} />
         <YAxis fontSize={12} allowDecimals={false} />
         <Tooltip
           labelFormatter={(l) => fmtDay(l as string)}
@@ -89,7 +89,7 @@ export function VoterGrowthChart({
         <Line
           type="monotone"
           dataKey="cumulative"
-          stroke="hsl(221 83% 53%)"
+          stroke="hsl(243 75% 59%)"
           strokeWidth={2}
           dot={false}
         />
@@ -120,7 +120,7 @@ export function TopParticipantsChart({
           tickFormatter={(n: string) => (n.length > 14 ? n.slice(0, 13) + "…" : n)}
         />
         <Tooltip formatter={(v) => [`${v} poin`, "Total"]} />
-        <Bar dataKey="total_points" fill="hsl(221 83% 53%)" radius={[0, 4, 4, 0]} />
+        <Bar dataKey="total_points" fill="hsl(243 75% 59%)" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
