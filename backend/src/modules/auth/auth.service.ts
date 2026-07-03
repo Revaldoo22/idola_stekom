@@ -86,10 +86,15 @@ export class AuthService {
         this.profiles.create({
           email: g.email,
           name: g.name,
+          avatarUrl: g.picture,
           role: "voter",
           onboarded: false,
         }),
       );
+    } else if (g.picture && g.picture !== user.avatarUrl) {
+      // Foto selalu ikut akun Google — refresh tiap login.
+      user.avatarUrl = g.picture;
+      await this.profiles.save(user);
     }
     const token = await this.sign(user);
     // Voters land on the wizard until they've completed it; other roles
@@ -110,6 +115,7 @@ export class AuthService {
       : null;
     return {
       school: school?.name ?? null,
+      avatar_url: user.avatarUrl,
       id: user.id,
       name: user.name,
       email: user.email,
@@ -122,6 +128,65 @@ export class AuthService {
       college_intent: user.collegeIntent,
       onboarded: user.onboarded,
     };
+  }
+
+  /**
+   * Edit akun voter. Nomor WA & foto TIDAK bisa diubah di sini (WA =
+   * identitas anti-cheat; foto ikut akun Google). Ganti nama ikut
+   * menyinkronkan voter_name historis agar cek PHONE_NAME tetap lolos.
+   */
+  async updateProfile(
+    userId: string,
+    dto: {
+      name?: string;
+      password?: string;
+      school_id?: string;
+      school_name?: string;
+      class?: string;
+      status?: string;
+      region?: string;
+      college_intent?: "ya" | "tidak" | "ragu";
+    },
+  ) {
+    const user = await this.profiles.findOneBy({ id: userId });
+    if (!user) throw new NotFoundException("Akun tidak ditemukan.");
+
+    if (dto.school_id || dto.school_name?.trim()) {
+      let schoolId = dto.school_id ?? null;
+      if (!schoolId && dto.school_name?.trim()) {
+        const name = dto.school_name.trim();
+        const existing = await this.schools
+          .createQueryBuilder("s")
+          .where("LOWER(s.name) = LOWER(:name)", { name })
+          .getOne();
+        schoolId = (existing ?? (await this.schools.save({ name }))).id;
+      }
+      user.schoolId = schoolId;
+    }
+
+    const newName = dto.name?.trim();
+    const nameChanged = !!newName && newName !== user.name;
+    if (nameChanged) user.name = newName!;
+    if (dto.password) user.passwordHash = hashPassword(dto.password);
+    if (dto.class !== undefined) user.voterClass = dto.class || null;
+    if (dto.status !== undefined) user.voterStatus = dto.status || null;
+    if (dto.region !== undefined) user.region = dto.region.trim() || null;
+    if (dto.college_intent !== undefined)
+      user.collegeIntent = dto.college_intent;
+    await this.profiles.save(user);
+
+    // Sinkron nama di jejak vote/submission (1 nomor = 1 nama).
+    if (nameChanged && user.phoneNumber) {
+      await this.profiles.manager.query(
+        `update daily_votes set voter_name = $1 where voter_phone = $2`,
+        [user.name, user.phoneNumber],
+      );
+      await this.profiles.manager.query(
+        `update submissions set voter_name = $1 where voter_phone = $2`,
+        [user.name, user.phoneNumber],
+      );
+    }
+    return { ok: true };
   }
 
   /** Complete the voter onboarding wizard. */

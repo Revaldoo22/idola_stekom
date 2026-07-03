@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -8,6 +9,7 @@ import {
   LayoutDashboard,
   LogIn,
   LogOut,
+  Settings,
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -52,9 +54,19 @@ export function AuthNav() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="flex cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-background py-1 pl-1 pr-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-            {initial}
-          </span>
+          {profile.avatar_url ? (
+            <Image
+              src={profile.avatar_url}
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 rounded-full object-cover"
+            />
+          ) : (
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+              {initial}
+            </span>
+          )}
           <span className="hidden max-w-28 truncate sm:inline">
             {profile.name || "Pendukung"}
           </span>
@@ -83,6 +95,13 @@ export function AuthNav() {
           <DropdownMenuItem asChild>
             <Link href="/onboarding" className="gap-2">
               <UserRound className="h-4 w-4" /> Lengkapi Profil
+            </Link>
+          </DropdownMenuItem>
+        )}
+        {profile.role === "voter" && profile.onboarded && (
+          <DropdownMenuItem asChild>
+            <Link href="/akun" className="gap-2">
+              <Settings className="h-4 w-4" /> Pengaturan Akun
             </Link>
           </DropdownMenuItem>
         )}

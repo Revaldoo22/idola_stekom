@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Patch,
   Post,
   Query,
   Res,
@@ -12,6 +13,7 @@ import { AuthService } from "./auth.service";
 import { GoogleService } from "./google.service";
 import { LoginDto } from "./dto/login.dto";
 import { OnboardingDto } from "./dto/onboarding.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { AUTH_COOKIE, JwtGuard, JwtPayload } from "../../common/guards/jwt.guard";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 
@@ -69,6 +71,16 @@ export class AuthController {
   @UseGuards(JwtGuard)
   onboarding(@CurrentUser() user: JwtPayload, @Body() dto: OnboardingDto) {
     return this.auth.completeOnboarding(user.sub, dto);
+  }
+
+  /** Edit akun voter (password/sekolah/dll — bukan WA/foto). */
+  @Patch("profile")
+  @UseGuards(JwtGuard)
+  updateProfile(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.auth.updateProfile(user.sub, dto);
   }
 
   @Post("logout")

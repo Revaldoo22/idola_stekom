@@ -28,6 +28,10 @@ export class Profile {
   @Column({ type: "text", unique: true, nullable: true })
   email!: string | null;
 
+  /** Foto profil dari akun Google — di-refresh tiap login SSO. */
+  @Column({ name: "avatar_url", type: "text", nullable: true })
+  avatarUrl!: string | null;
+
   @Column({ name: "password_hash", type: "text", nullable: true })
   passwordHash!: string | null;
 
