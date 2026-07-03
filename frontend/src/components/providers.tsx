@@ -29,15 +29,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
             // serasi tema YCS (radius 2xl, shadow lembut, font ikut app).
             unstyled: true,
             classNames: {
+              // Pill gelap kompak — netral, tanpa aksen ramai; jenis toast
+              // cukup dibedakan warna ikonnya.
               toast:
-                "group pointer-events-auto flex w-[380px] max-w-[calc(100vw-2rem)] items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 pl-3.5 font-sans text-sm text-foreground shadow-xl shadow-black/10 data-[type=success]:border-l-4 data-[type=success]:border-l-emerald-500 data-[type=error]:border-l-4 data-[type=error]:border-l-destructive data-[type=warning]:border-l-4 data-[type=warning]:border-l-amber-500 data-[type=info]:border-l-4 data-[type=info]:border-l-primary",
-              icon: "shrink-0 [&>svg]:h-5 [&>svg]:w-5 group-data-[type=success]:text-emerald-500 group-data-[type=error]:text-destructive group-data-[type=warning]:text-amber-500 group-data-[type=info]:text-primary",
-              title: "font-semibold leading-snug",
-              description: "text-xs text-muted-foreground",
+                "group pointer-events-auto flex w-fit max-w-[calc(100vw-2rem)] items-center gap-2.5 rounded-xl bg-foreground py-2.5 pl-3 pr-4 font-sans text-sm font-medium text-background shadow-lg",
+              icon: "shrink-0 [&>svg]:h-4 [&>svg]:w-4 group-data-[type=success]:text-emerald-400 group-data-[type=error]:text-red-400 group-data-[type=warning]:text-amber-400 group-data-[type=info]:text-sky-400",
+              title: "leading-snug",
+              description: "text-xs opacity-70",
               actionButton:
-                "rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground",
+                "rounded-lg bg-background/15 px-2.5 py-1 text-xs font-semibold",
               cancelButton:
-                "rounded-lg bg-muted px-3 py-1.5 text-xs font-medium",
+                "rounded-lg px-2.5 py-1 text-xs font-medium opacity-70",
             },
           }}
         />

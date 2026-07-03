@@ -147,7 +147,7 @@ export default function OnboardingPage() {
           college_intent: intent,
         }),
       });
-      toast.success("Profil lengkap! Selamat mendukung 🎉");
+      toast.success("Profil lengkap. Selamat mendukung!");
       router.replace("/");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Gagal menyimpan profil.");

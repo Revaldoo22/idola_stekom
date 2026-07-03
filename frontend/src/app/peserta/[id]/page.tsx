@@ -340,7 +340,7 @@ function VoteDialog({
         return;
       }
       voter.persist(voter.data);
-      toast.success(`Dukungan +${pts} untuk ${participantName} berhasil! 🎉`);
+      toast.success(`+${pts} terkirim untuk ${participantName}`);
       setOpen(false);
       onVoted();
     } finally {
