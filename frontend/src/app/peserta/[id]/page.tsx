@@ -117,7 +117,7 @@ export default function PublicParticipantPage({
     <div className="min-h-screen">
       <MaintenanceOverlay />
       <EventClosedOverlay />
-      <Navbar links={[{ href: "/ranking", label: "Ranking" }]} />
+      <Navbar />
       <main className="container max-w-3xl space-y-6 py-8">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/">

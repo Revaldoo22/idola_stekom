@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import NextTopLoader from "nextjs-toploader";
 import { Providers } from "@/components/providers";
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"] });
@@ -42,6 +43,12 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <body className={jakarta.className} suppressHydrationWarning>
+        <NextTopLoader
+          color="hsl(24 95% 53%)"
+          height={3}
+          showSpinner={false}
+          shadow="0 0 10px hsl(24 95% 53% / 0.6)"
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

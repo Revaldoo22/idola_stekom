@@ -45,14 +45,7 @@ export default function PublicRoundsPage() {
     <div className="min-h-screen">
       <MaintenanceOverlay />
       <EventClosedOverlay />
-      <Navbar
-        links={[
-          { href: "/ranking", label: "Ranking" },
-          { href: "/peringkat-sekolah", label: "Peringkat Sekolah" },
-          { href: "/heatmap", label: "Heatmap" },
-          { href: "/gelombang", label: "Gelombang" },
-        ]}
-      />
+      <Navbar />
 
       <main className="container space-y-6 py-8">
         <div>

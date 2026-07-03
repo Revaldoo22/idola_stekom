@@ -20,14 +20,7 @@ export default function TopVoterPage() {
 
   return (
     <div className="min-h-screen">
-      <Navbar
-        title="🔥 Top Voter Teraktif"
-        links={[
-          { href: "/", label: "Beranda" },
-          { href: "/ranking", label: "Ranking" },
-          { href: "/login", label: "Masuk" },
-        ]}
-      />
+      <Navbar title="Top Voter Teraktif" />
       <main className="container max-w-2xl py-8">
         <Card className="mb-6 border-accent/40 bg-accent/5">
           <CardContent className="flex items-center gap-3 p-4">

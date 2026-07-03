@@ -23,15 +23,26 @@ export type NavLink = {
   cta?: boolean;
 };
 
+/** Menu publik standar — SATU sumber, dipakai semua halaman publik. */
+export const PUBLIC_LINKS: NavLink[] = [
+  { href: "/ranking", label: "Ranking" },
+  { href: "/peringkat-sekolah", label: "Peringkat Sekolah" },
+  { href: "/heatmap", label: "Heatmap" },
+  { href: "/gelombang", label: "Gelombang" },
+  { href: "/top-voter", label: "Top Voter" },
+];
+
 export function Navbar({
   title,
-  links = [],
+  links,
   showLogout = false,
 }: {
   title?: string;
   links?: NavLink[];
   showLogout?: boolean;
 }) {
+  // Tanpa prop links: halaman publik memakai menu standar (konsisten).
+  const navLinks = links ?? (showLogout ? [] : PUBLIC_LINKS);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -49,7 +60,7 @@ export function Navbar({
     if (href !== "/" && pathname.startsWith(href + "/")) return href.length;
     return -1;
   };
-  const activeHref = links.reduce(
+  const activeHref = navLinks.reduce(
     (best, l) => (matchLen(l.href) > matchLen(best) ? l.href : best),
     ""
   );
@@ -73,7 +84,7 @@ export function Navbar({
         <div className="flex items-center gap-2">
         {/* Desktop nav */}
         <nav className="hidden items-center gap-1 md:flex">
-          {links.map((l) => {
+          {navLinks.map((l) => {
             const active = isActive(l.href);
             const Icon = l.icon;
             if (l.cta) {
@@ -128,7 +139,7 @@ export function Navbar({
         {!showLogout && <AuthNav />}
 
         {/* Mobile menu */}
-        {(links.length > 0 || showLogout) && (
+        {(navLinks.length > 0 || showLogout) && (
           <div className="md:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -137,7 +148,7 @@ export function Navbar({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
-                {links.map((l) => {
+                {navLinks.map((l) => {
                   const active = isActive(l.href);
                   const Icon = l.icon;
                   return (

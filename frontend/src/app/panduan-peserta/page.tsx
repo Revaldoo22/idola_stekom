@@ -119,7 +119,7 @@ const steps: Step[] = [
 export default function PanduanPesertaPage() {
   return (
     <div className="min-h-screen">
-      <Navbar links={[{ href: "/", label: "Beranda" }]} />
+      <Navbar />
 
       <main className="container max-w-3xl space-y-8 py-10">
         <header className="space-y-2 text-center">

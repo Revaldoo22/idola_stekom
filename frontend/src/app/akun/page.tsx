@@ -119,7 +119,7 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen">
-      <Navbar links={[{ href: "/ranking", label: "Ranking" }]} />
+      <Navbar />
       <main className="container max-w-xl space-y-6 py-8">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/">

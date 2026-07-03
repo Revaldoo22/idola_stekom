@@ -60,14 +60,7 @@ export default function SchoolPage({
     <div className="min-h-screen">
       <MaintenanceOverlay />
       <EventClosedOverlay />
-      <Navbar
-        links={[
-          { href: "/ranking", label: "Ranking" },
-          { href: "/peringkat-sekolah", label: "Peringkat Sekolah" },
-          { href: "/heatmap", label: "Heatmap" },
-          { href: "/gelombang", label: "Gelombang" },
-        ]}
-      />
+      <Navbar />
 
       <main className="container max-w-3xl space-y-6 py-8">
         <Button variant="ghost" size="sm" asChild>
