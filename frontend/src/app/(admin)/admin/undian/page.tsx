@@ -298,6 +298,14 @@ function LiveDraw({
   const alive = React.useRef(true);
   React.useEffect(() => () => void (alive.current = false), []);
 
+  // Prefetch kandidat begitu panggung dibuka: shuffle mulai tanpa jeda.
+  const poolRef = React.useRef<{ name: string; code: string }[]>([]);
+  React.useEffect(() => {
+    api<{ name: string; code: string }[]>("/api/admin/raffle/candidates")
+      .then((c) => (poolRef.current = c))
+      .catch(() => {});
+  }, []);
+
   async function run() {
     try {
       setWinner(null);
@@ -309,17 +317,16 @@ function LiveDraw({
         if (!alive.current) return;
       }
 
-      // 2. Ambil kandidat + pemenang paralel; shuffle nama melambat
+      // 2. Shuffle langsung jalan (pool prefetch); draw diproses paralel
+      // di background - animasi tidak pernah menunggu jaringan.
       setStage("spin");
-      const [cands, res] = await Promise.all([
-        api<{ name: string; code: string }[]>("/api/admin/raffle/candidates"),
-        api<{ winner: Winner }>("/api/admin/raffle/draw", {
-          method: "POST",
-          body: JSON.stringify({ prize }),
-        }),
-      ]);
-      const pool =
-        cands.length > 0 ? cands : [{ name: res.winner.name ?? "?", code: "" }];
+      const drawPromise = api<{ winner: Winner }>("/api/admin/raffle/draw", {
+        method: "POST",
+        body: JSON.stringify({ prize }),
+      });
+      const pool = poolRef.current.length
+        ? poolRef.current
+        : [{ name: "...", code: "" }];
       let delay = 55;
       const start = Date.now();
       while (Date.now() - start < 4600) {
@@ -328,12 +335,16 @@ function LiveDraw({
         if (!alive.current) return;
         delay = Math.min(360, delay * 1.07); // makin lambat, makin tegang
       }
+      const res = await drawPromise; // umumnya sudah selesai jauh sebelum ini
       setTicker(res.winner.name ?? "?");
       await new Promise((r) => setTimeout(r, 650));
 
-      // 3. Reveal + confetti
+      // 3. Reveal + confetti; segarkan pool untuk ronde berikutnya
       setWinner(res.winner);
       setStage("reveal");
+      api<{ name: string; code: string }[]>("/api/admin/raffle/candidates")
+        .then((c) => (poolRef.current = c))
+        .catch(() => {});
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Gagal mengundi.");
       setStage("idle");
