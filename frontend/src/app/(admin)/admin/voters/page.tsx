@@ -112,6 +112,15 @@ export default function AdminVotersPage() {
         Status: voterStatusLabel(v.voter_status) || "",
         Kelas: v.voter_class ?? "",
         Sekolah: v.voter_school ?? "",
+        Daerah: v.region ?? "",
+        "Niat Kuliah":
+          v.college_intent === "ya"
+            ? "Ya"
+            : v.college_intent === "ragu"
+              ? "Ragu"
+              : v.college_intent === "tidak"
+                ? "Tidak"
+                : "",
         Bergabung: v.first_seen
           ? new Date(v.first_seen).toLocaleDateString("id-ID")
           : "",

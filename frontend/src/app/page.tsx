@@ -6,6 +6,7 @@ import { ParticipantGrid } from "@/components/participant-grid";
 import { PrizeButtons } from "@/components/prize-buttons";
 import { MaintenanceOverlay } from "@/components/maintenance-overlay";
 import { EventClosedOverlay } from "@/components/event-closed-overlay";
+import { VoterTodayPanel } from "@/components/voter-today";
 
 export default function HomePage() {
   return (
@@ -16,6 +17,7 @@ export default function HomePage() {
         links={[
           { href: "/ranking", label: "Ranking" },
           { href: "/heatmap", label: "Heatmap" },
+          { href: "/gelombang", label: "Gelombang" },
           { href: "/top-voter", label: "Top Voter" },
         ]}
       />
@@ -61,6 +63,9 @@ export default function HomePage() {
 
       {/* All participants */}
       <section id="peserta" className="container scroll-mt-20 py-8">
+        <div className="mb-6">
+          <VoterTodayPanel />
+        </div>
         <div className="mb-6">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Daftar Peserta

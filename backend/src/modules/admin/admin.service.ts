@@ -111,8 +111,13 @@ export class AdminService {
              greatest(v.last_c, q.last_c) as last_seen
       from v full outer join q on q.voter_phone = v.voter_phone
     ),
+    enriched as (
+      select c.*, pr.region, pr.college_intent
+      from combined c
+      left join profiles pr on pr.phone_number = c.voter_phone
+    ),
     filtered as (
-      select * from combined
+      select * from enriched
       where ($4::text is null
               or voter_name ilike '%' || $4 || '%'
               or voter_phone ilike '%' || $4 || '%'
@@ -142,7 +147,8 @@ export class AdminService {
     return this.db.query(
       `${this.votersCte}
        select voter_phone, voter_name, voter_email, voter_status, voter_school,
-              voter_class, votes::int, quests::int, points::int,
+              voter_class, region, college_intent,
+              votes::int, quests::int, points::int,
               first_seen, last_seen
        from filtered order by ${order}
        limit $7 offset $8`,

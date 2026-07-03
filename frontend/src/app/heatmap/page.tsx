@@ -40,6 +40,7 @@ export default function HeatmapPage() {
         links={[
           { href: "/ranking", label: "Ranking" },
           { href: "/heatmap", label: "Heatmap" },
+          { href: "/gelombang", label: "Gelombang" },
           { href: "/top-voter", label: "Top Voter" },
         ]}
       />

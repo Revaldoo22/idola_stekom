@@ -11,10 +11,12 @@ import {
 } from "../../database/entities";
 import { SettingsModule } from "../settings/settings.module";
 import { RoundsModule } from "../rounds/rounds.module";
+import { AuthModule } from "../auth/auth.module";
 import { AntiCheatService } from "./anti-cheat.service";
 import { VotesService } from "./votes.service";
 import { SubmissionsService } from "./submissions.service";
 import { VotingController } from "./voting.controller";
+import { VoterSelfController } from "./voter-self.controller";
 
 @Module({
   imports: [
@@ -29,8 +31,9 @@ import { VotingController } from "./voting.controller";
     ]),
     SettingsModule,
     RoundsModule,
+    AuthModule,
   ],
-  controllers: [VotingController],
+  controllers: [VotingController, VoterSelfController],
   providers: [AntiCheatService, VotesService, SubmissionsService],
   exports: [AntiCheatService],
 })

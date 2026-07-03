@@ -104,4 +104,16 @@ export class PublicRoundsController {
   async activeRound() {
     return (await this.rounds.active()) ?? null;
   }
+
+  /** Daftar gelombang untuk halaman hasil publik (tanpa draft kosong). */
+  @Get("rounds")
+  publicRounds() {
+    return this.rounds.publicList();
+  }
+
+  /** Klasemen/hasil satu gelombang — publik (live saat aktif, final saat tutup). */
+  @Get("rounds/:id/results")
+  results(@Param("id", ParseUUIDPipe) id: string) {
+    return this.rounds.standings(id);
+  }
 }

@@ -34,6 +34,17 @@ export class RoundsService {
       order by r.created_at`);
   }
 
+  /** Versi publik: hanya round aktif/selesai (draft disembunyikan). */
+  publicList() {
+    return this.db.query(`
+      select r.id, r.name, r.status, r.starts_at, r.ends_at,
+             (select count(*) from round_schools rs
+               where rs.round_id = r.id)::int as school_count
+      from rounds r
+      where r.status in ('active', 'closed')
+      order by r.created_at desc`);
+  }
+
   create(name: string) {
     return this.rounds.save(this.rounds.create({ name: name.trim() }));
   }

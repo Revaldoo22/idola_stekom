@@ -71,6 +71,8 @@ export type AdminVoter = {
   voter_status: string | null;
   voter_school: string | null;
   voter_class: string | null;
+  region: string | null;
+  college_intent: "ya" | "tidak" | "ragu" | null;
   votes: number;
   quests: number;
   points: number;
@@ -602,5 +604,40 @@ export function useHeatmap(roundId?: string) {
       api<HeatmapRow[]>(
         `/api/public/heatmap${roundId ? `?round_id=${roundId}` : ""}`,
       ),
+  });
+}
+
+export function usePublicRounds() {
+  return useQuery({
+    queryKey: ["public-rounds"],
+    queryFn: () => api<Round[]>("/api/public/rounds"),
+  });
+}
+
+export function useRoundResults(roundId?: string) {
+  return useQuery({
+    queryKey: ["round-results", roundId],
+    enabled: !!roundId,
+    queryFn: () =>
+      api<RoundStanding[]>(`/api/public/rounds/${roundId}/results`),
+  });
+}
+
+export type VoterToday = {
+  votes: {
+    vote_kind: "daily5" | "fav20";
+    points: number;
+    created_at: string;
+    participant_id: string;
+    participant_name: string;
+  }[];
+  fav_quota: { used: number; max: number };
+};
+
+export function useVoterToday(enabled: boolean) {
+  return useQuery({
+    queryKey: ["voter-today"],
+    enabled,
+    queryFn: () => api<VoterToday>("/api/voter/today"),
   });
 }
