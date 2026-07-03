@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { GraduationCap } from "lucide-react";
+import { ChevronDown, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/navbar";
 import { ParticipantGrid } from "@/components/participant-grid";
@@ -16,8 +16,29 @@ export default function HomePage() {
       <EventClosedOverlay />
       <Navbar />
 
+      {/* Video pembuka: full layar, konten hero muncul setelah scroll */}
+      <section className="relative h-[calc(100svh-4rem)] overflow-hidden bg-black">
+        {/* Iframe di-scale agar menutupi layar (cover) di semua rasio */}
+        <iframe
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[56.25vw] min-h-full w-[177.78svh] min-w-full -translate-x-1/2 -translate-y-1/2"
+          src="https://www.youtube.com/embed/unCD3pcd0FA?autoplay=1&mute=1&loop=1&playlist=unCD3pcd0FA&controls=0&rel=0&playsinline=1&modestbranding=1"
+          title="Youth Character Summit"
+          allow="autoplay; encrypted-media; picture-in-picture"
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+        {/* Vignette tipis + ajakan scroll */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/70 to-transparent" />
+        <a
+          href="#hero"
+          className="absolute inset-x-0 bottom-5 z-10 mx-auto flex w-fit cursor-pointer flex-col items-center gap-1 text-xs font-semibold text-white/90 transition-colors hover:text-white"
+        >
+          Scroll untuk mulai mendukung
+          <ChevronDown className="h-5 w-5 animate-bounce" />
+        </a>
+      </section>
+
       {/* Hero */}
-      <section className="relative overflow-hidden border-b">
+      <section id="hero" className="relative scroll-mt-16 overflow-hidden border-b">
         <div className="container space-y-6 py-16 text-center md:py-24">
           <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold text-primary">
             <GraduationCap className="h-4 w-4" />
