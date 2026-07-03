@@ -17,7 +17,7 @@ export function roleHome(role: Role): string {
     case "admin":
       return "/admin";
     case "participant":
-      return "/participant/dashboard";
+      return "/";
     default:
       return "/";
   }

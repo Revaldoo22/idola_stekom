@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { GraduationCap, UserSquare2 } from "lucide-react";
+import { GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GoogleButton } from "./google-button";
@@ -20,16 +20,6 @@ export default function LoginChooserPage() {
           <Suspense fallback={null}>
             <GoogleButton />
           </Suspense>
-          <div className="flex items-center gap-3 py-1">
-            <span className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">atau</span>
-            <span className="h-px flex-1 bg-border" />
-          </div>
-          <Button className="w-full" variant="outline" asChild>
-            <Link href="/login/peserta">
-              <UserSquare2 className="h-4 w-4" /> Masuk sebagai Peserta
-            </Link>
-          </Button>
           <p className="pt-2 text-center text-xs text-muted-foreground">
             Voter masuk pakai akun Google, lengkapi profil sekali, lalu
             langsung bisa vote di{" "}

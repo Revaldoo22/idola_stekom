@@ -3,7 +3,6 @@ import { jwtVerify } from "jose";
 
 const ROLE_PREFIX: Record<string, string> = {
   "/admin": "admin",
-  "/participant": "participant",
 };
 
 const AUTH_COOKIE = "idola_token";
@@ -38,11 +37,7 @@ export async function middleware(request: NextRequest) {
   const required = ROLE_PREFIX[matched];
   if (role !== required) {
     return redirectTo(
-      role === "admin"
-        ? "/admin"
-        : role === "participant"
-          ? "/participant/dashboard"
-          : "/",
+      role === "admin" ? "/admin" : "/",
     );
   }
 
@@ -50,5 +45,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/participant/:path*"],
+  matcher: ["/admin/:path*"],
 };

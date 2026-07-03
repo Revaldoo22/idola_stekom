@@ -84,13 +84,6 @@ export function AuthNav() {
             </Link>
           </DropdownMenuItem>
         )}
-        {profile.role === "participant" && (
-          <DropdownMenuItem asChild>
-            <Link href="/participant/dashboard" className="gap-2">
-              <LayoutDashboard className="h-4 w-4" /> Dashboard Peserta
-            </Link>
-          </DropdownMenuItem>
-        )}
         {profile.role === "voter" && !profile.onboarded && (
           <DropdownMenuItem asChild>
             <Link href="/onboarding" className="gap-2">

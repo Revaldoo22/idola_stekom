@@ -16,7 +16,7 @@ import type { GoogleUser } from "./google.service";
 
 function roleHome(role: string): string {
   if (role === "admin") return "/admin";
-  if (role === "participant") return "/participant/dashboard";
+  if (role === "participant") return "/";
   return "/";
 }
 
