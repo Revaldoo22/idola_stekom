@@ -44,8 +44,10 @@ export class AuthController {
 
   /** Voter SSO: redirect the browser to Google's consent screen. */
   @Get("google")
-  googleStart(@Res() res: Response) {
-    res.redirect(this.google.authUrl());
+  googleStart(@Res() res: Response, @Query("next") next?: string) {
+    // next dibawa lewat OAuth state agar balik ke halaman asal setelah login.
+    const state = next && next.startsWith("/") ? next : undefined;
+    res.redirect(this.google.authUrl(state));
   }
 
   /** Google redirects here; set the session cookie then bounce to the app. */
@@ -54,13 +56,20 @@ export class AuthController {
     @Query("code") code: string,
     @Query("error") error: string,
     @Res() res: Response,
+    @Query("state") state?: string,
   ) {
     if (error || !code) return res.redirect("/login?sso=failed");
     try {
       const gUser = await this.google.exchange(code);
       const { token, redirect } = await this.auth.googleLogin(gUser);
       res.cookie(AUTH_COOKIE, token, COOKIE_OPTS);
-      return res.redirect(redirect);
+      // Wizard tetap prioritas; setelah itu hormati next (path internal saja
+      // — cegah open redirect).
+      const next =
+        state && state.startsWith("/") && !state.startsWith("//")
+          ? state
+          : null;
+      return res.redirect(redirect === "/onboarding" ? redirect : next ?? redirect);
     } catch {
       return res.redirect("/login?sso=failed");
     }

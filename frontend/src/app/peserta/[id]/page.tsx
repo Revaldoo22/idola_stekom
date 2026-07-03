@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +70,18 @@ export default function PublicParticipantPage({
   const { data: quests } = useQuests(true);
   const { data: settings } = useSettings();
   const eventClosed = settings ? !settings.event_open : false;
+
+  const router = useRouter();
+
+  // Aksi dukung/quest wajib login sebagai pendukung.
+  // gate = null berarti boleh lanjut; selain itu fungsi pengalihan.
+  const gate: (() => void) | null = !me
+    ? () => router.push(`/login?next=/peserta/${id}`)
+    : me.role === "voter" && !me.onboarded
+      ? () => router.push("/onboarding")
+      : me.role !== "voter"
+        ? () => toast.error("Akun admin/peserta tidak bisa memberi dukungan.")
+        : null;
 
   // Voter yang sudah login + lengkapi wizard: identitas dari profil,
   // tidak perlu isi form lagi di tiap vote/quest.
@@ -174,6 +187,7 @@ export default function PublicParticipantPage({
                     participantName={participant.name}
                     voter={voter}
                     locked={locked}
+                    gate={gate}
                     disabled={eventClosed}
                     onVoted={() => refetch()}
                   />
@@ -183,6 +197,7 @@ export default function PublicParticipantPage({
                     participantName={participant.name}
                     voter={voter}
                     locked={locked}
+                    gate={gate}
                     disabled={eventClosed}
                     onVoted={() => refetch()}
                   />
@@ -212,6 +227,7 @@ export default function PublicParticipantPage({
                       participantName={participant.name}
                       voter={voter}
                       locked={locked}
+                      gate={gate}
                       disabled={eventClosed}
                     />
                   ))}
@@ -265,6 +281,7 @@ function VoteDialog({
   participantName,
   voter,
   locked,
+  gate,
   disabled,
   onVoted,
 }: {
@@ -274,6 +291,8 @@ function VoteDialog({
   voter: VoterCtx;
   /** Voter login + onboarded: identitas dari profil, tanpa form/konfirmasi. */
   locked: boolean;
+  /** Belum boleh vote (belum login / belum wizard / bukan voter). */
+  gate: (() => void) | null;
   disabled: boolean;
   onVoted: () => void;
 }) {
@@ -327,6 +346,21 @@ function VoteDialog({
     } finally {
       setBusy(false);
     }
+  }
+
+  // Belum siap vote (anon/wizard/bukan voter): tombol mengalihkan.
+  if (gate) {
+    return (
+      <Button
+        className="w-full"
+        variant={isFav ? "accent" : "default"}
+        disabled={disabled}
+        onClick={gate}
+      >
+        {isFav ? <Star className="h-4 w-4" /> : <Heart className="h-4 w-4" />}
+        {disabled ? "Event ditutup" : isFav ? "Favorit (+20)" : "Dukung (+5)"}
+      </Button>
+    );
   }
 
   // Sudah login: satu klik langsung vote — tanpa dialog isi data.
@@ -393,6 +427,7 @@ function QuestCard({
   participantName,
   voter,
   locked,
+  gate,
   disabled,
 }: {
   quest: Quest;
@@ -401,6 +436,8 @@ function QuestCard({
   voter: VoterCtx;
   /** Voter login + onboarded: dialog hanya untuk bukti, tanpa form data. */
   locked: boolean;
+  /** Belum boleh mengerjakan quest — tombol mengalihkan. */
+  gate: (() => void) | null;
   disabled: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
@@ -567,12 +604,18 @@ function QuestCard({
             <CheckCircle2 className="h-4 w-4" /> Semua konten sudah dikerjakan
           </Badge>
         )}
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(o) => !gate && setOpen(o)}>
           <DialogTrigger asChild>
             <Button
               size="sm"
               variant="accent"
               className="w-full"
+              onClick={(e) => {
+                if (gate) {
+                  e.preventDefault();
+                  gate();
+                }
+              }}
               disabled={
                 disabled ||
                 (needsContent &&

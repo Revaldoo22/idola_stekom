@@ -37,7 +37,7 @@ export class GoogleService {
     return !!this.clientId && !!this.clientSecret;
   }
 
-  authUrl(): string {
+  authUrl(state?: string): string {
     if (!this.configured) {
       throw new InternalServerErrorException(
         "Google SSO belum dikonfigurasi (GOOGLE_CLIENT_ID/SECRET).",
@@ -49,6 +49,7 @@ export class GoogleService {
       response_type: "code",
       scope: "openid email profile",
       prompt: "select_account",
+      ...(state ? { state } : {}),
     });
     return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   }
