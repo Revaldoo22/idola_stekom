@@ -76,7 +76,7 @@ export function ParticipantGrid() {
                       <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/30 to-transparent" />
                     </>
                   ) : (
-                    <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/5 to-violet-500/10">
+                    <div className="flex h-full items-center justify-center bg-muted">
                       <Avatar className="h-14 w-14 ring-2 ring-primary/20">
                         <AvatarFallback className="bg-primary/10 font-semibold text-primary">
                           {p.name.slice(0, 2).toUpperCase()}

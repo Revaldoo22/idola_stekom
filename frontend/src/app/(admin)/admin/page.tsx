@@ -28,27 +28,12 @@ import { cn } from "@/lib/utils";
 
 type Tone = "indigo" | "violet" | "sky" | "emerald" | "amber";
 
-const TONES: Record<Tone, { chip: string; glow: string }> = {
-  indigo: {
-    chip: "bg-indigo-500/12 text-indigo-600 dark:text-indigo-400",
-    glow: "from-indigo-500/10",
-  },
-  violet: {
-    chip: "bg-violet-500/12 text-violet-600 dark:text-violet-400",
-    glow: "from-violet-500/10",
-  },
-  sky: {
-    chip: "bg-sky-500/12 text-sky-600 dark:text-sky-400",
-    glow: "from-sky-500/10",
-  },
-  emerald: {
-    chip: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400",
-    glow: "from-emerald-500/10",
-  },
-  amber: {
-    chip: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-    glow: "from-amber-500/10",
-  },
+const TONES: Record<Tone, { chip: string }> = {
+  indigo: { chip: "bg-indigo-500/12 text-indigo-600 dark:text-indigo-400" },
+  violet: { chip: "bg-violet-500/12 text-violet-600 dark:text-violet-400" },
+  sky: { chip: "bg-sky-500/12 text-sky-600 dark:text-sky-400" },
+  emerald: { chip: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400" },
+  amber: { chip: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
 };
 
 function StatCard({
@@ -65,12 +50,6 @@ function StatCard({
   const t = TONES[tone];
   return (
     <Card className="card-lift relative overflow-hidden">
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent",
-          t.glow,
-        )}
-      />
       <CardContent className="relative flex items-center gap-3.5 p-5">
         <div
           className={cn(
@@ -137,7 +116,7 @@ export default function AdminDashboard() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Dashboard <span className="text-gradient">Admin</span>
+            Dashboard Admin
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             Ringkasan event 14 hari terakhir.

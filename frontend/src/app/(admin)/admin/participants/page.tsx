@@ -52,7 +52,7 @@ import { dateStamp, exportToExcel } from "@/lib/export-excel";
 import type { ParticipantWithSchool } from "@/types/database";
 
 const selectCls =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "select-ui";
 
 export default function AdminParticipantsPage() {
   const qc = useQueryClient();
@@ -331,7 +331,7 @@ export default function AdminParticipantsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Kelola <span className="text-gradient">Peserta</span></h1>
+          <h1 className="text-2xl font-bold tracking-tight">Kelola Peserta</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">Tambah, edit, dan kelola akun login peserta.</p>
         </div>
         <div className="flex gap-2">
@@ -753,7 +753,7 @@ function ParticipantDetailDialog({
 
   const shownPoints = rows.reduce((s, r) => s + r.points, 0);
   const sel =
-    "h-8 rounded-md border border-input bg-transparent px-2 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+    "select-ui h-8 w-auto pl-2 pr-8 text-xs";
 
   return (
     <Dialog open={!!participant} onOpenChange={(o) => !o && onClose()}>

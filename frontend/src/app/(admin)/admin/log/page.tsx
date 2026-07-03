@@ -23,7 +23,7 @@ import { formatNumber } from "@/lib/utils";
 
 const PAGE_SIZE = 30;
 const selectCls =
-  "h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "select-ui w-auto";
 
 const KIND_OPTS = [
   { value: "all", label: "Semua jenis" },
@@ -115,7 +115,7 @@ export default function AdminLogPage() {
     <div className="space-y-6">
       <div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Log <span className="text-gradient">Aktivitas</span></h1>
+          <h1 className="text-2xl font-bold tracking-tight">Log Aktivitas</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">Semua vote &amp; submission yang masuk, real-time.</p>
         </div>
         <p className="text-sm text-muted-foreground">

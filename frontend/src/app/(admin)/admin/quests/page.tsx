@@ -47,7 +47,7 @@ const empty: QuestInput = {
 };
 
 const selectCls =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "select-ui";
 
 export default function AdminQuestsPage() {
   const qc = useQueryClient();
@@ -191,7 +191,7 @@ export default function AdminQuestsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Kelola <span className="text-gradient">Quest</span></h1>
+          <h1 className="text-2xl font-bold tracking-tight">Kelola Quest</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">Atur quest, poin, dan frekuensinya.</p>
         </div>
         <Button onClick={openCreate}>

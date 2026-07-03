@@ -37,7 +37,7 @@ import { dateStamp, exportToExcel } from "@/lib/export-excel";
 
 const PAGE_SIZE = 25;
 const selectCls =
-  "h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "select-ui w-auto";
 
 const STATUS_OPTS = [
   { value: "teman_sekolah", label: "Teman satu sekolah" },
@@ -139,7 +139,7 @@ export default function AdminVotersPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div>
-          <h1 className="text-2xl font-bold tracking-tight">Daftar <span className="text-gradient">Voter</span></h1>
+          <h1 className="text-2xl font-bold tracking-tight">Daftar Voter</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">Rekap pendukung beserta vote &amp; quest-nya.</p>
         </div>
           <p className="text-sm text-muted-foreground">

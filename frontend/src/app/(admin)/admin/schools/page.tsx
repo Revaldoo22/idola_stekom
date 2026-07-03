@@ -122,7 +122,7 @@ export default function AdminSchoolsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Kelola <span className="text-gradient">Sekolah</span></h1>
+          <h1 className="text-2xl font-bold tracking-tight">Kelola Sekolah</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">Daftar sekolah asal peserta.</p>
         </div>
         <Button onClick={openCreate}>

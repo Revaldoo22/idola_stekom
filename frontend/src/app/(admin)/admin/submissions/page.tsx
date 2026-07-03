@@ -119,7 +119,7 @@ export default function AdminSubmissionsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Verifikasi <span className="text-gradient">Submission</span></h1>
+          <h1 className="text-2xl font-bold tracking-tight">Verifikasi Submission</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">Setujui atau tolak bukti quest dari pendukung.</p>
         </div>
         {counts && (
