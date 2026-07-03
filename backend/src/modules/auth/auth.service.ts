@@ -105,7 +105,11 @@ export class AuthService {
   async me(userId: string) {
     const user = await this.profiles.findOneBy({ id: userId });
     if (!user) throw new UnauthorizedException("Sesi tidak valid.");
+    const school = user.schoolId
+      ? await this.schools.findOneBy({ id: user.schoolId })
+      : null;
     return {
+      school: school?.name ?? null,
       id: user.id,
       name: user.name,
       email: user.email,

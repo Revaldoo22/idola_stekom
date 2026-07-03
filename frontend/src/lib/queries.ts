@@ -41,6 +41,7 @@ export type MyProfile = {
   phone_number: string | null;
   role: Profile["role"];
   school_id: string | null;
+  school: string | null;
   class: string | null;
   status: string | null;
   region: string | null;

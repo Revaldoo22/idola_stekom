@@ -39,6 +39,7 @@ import { EmptyState, ErrorState } from "@/components/states";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useDoneContentIds,
+  useMyProfile,
   useParticipantContents,
   useQuests,
   useSettings,
@@ -63,10 +64,30 @@ export default function PublicParticipantPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const voter = useVoterForm();
+  const anonVoter = useVoterForm();
+  const { data: me } = useMyProfile();
   const { data: quests } = useQuests(true);
   const { data: settings } = useSettings();
   const eventClosed = settings ? !settings.event_open : false;
+
+  // Voter yang sudah login + lengkapi wizard: identitas dari profil,
+  // tidak perlu isi form lagi di tiap vote/quest.
+  const locked = !!me && me.role === "voter" && me.onboarded;
+  const voter: VoterCtx = locked
+    ? {
+        ...anonVoter,
+        data: {
+          name: me.name ?? "",
+          phone_number: me.phone_number ?? "",
+          email: me.email ?? "",
+          status: (me.status ?? "teman_luar") as VoterFormData["status"],
+          school: me.school ?? "",
+          class: (me.class ?? "") as VoterFormData["class"],
+        },
+        setData: () => {},
+        persist: () => {},
+      }
+    : anonVoter;
 
   const {
     data: participant,
@@ -152,6 +173,7 @@ export default function PublicParticipantPage({
                     participantId={id}
                     participantName={participant.name}
                     voter={voter}
+                    locked={locked}
                     disabled={eventClosed}
                     onVoted={() => refetch()}
                   />
@@ -160,6 +182,7 @@ export default function PublicParticipantPage({
                     participantId={id}
                     participantName={participant.name}
                     voter={voter}
+                    locked={locked}
                     disabled={eventClosed}
                     onVoted={() => refetch()}
                   />
@@ -188,6 +211,7 @@ export default function PublicParticipantPage({
                       participantId={id}
                       participantName={participant.name}
                       voter={voter}
+                      locked={locked}
                       disabled={eventClosed}
                     />
                   ))}
@@ -240,6 +264,7 @@ function VoteDialog({
   participantId,
   participantName,
   voter,
+  locked,
   disabled,
   onVoted,
 }: {
@@ -247,6 +272,8 @@ function VoteDialog({
   participantId: string;
   participantName: string;
   voter: VoterCtx;
+  /** Voter login + onboarded: identitas dari profil, tanpa form/konfirmasi. */
+  locked: boolean;
   disabled: boolean;
   onVoted: () => void;
 }) {
@@ -260,6 +287,10 @@ function VoteDialog({
     const err = validateVoter(voter.data);
     if (err) {
       toast.error(err);
+      return;
+    }
+    if (locked) {
+      void doSubmit();
       return;
     }
     confirm({
@@ -296,6 +327,27 @@ function VoteDialog({
     } finally {
       setBusy(false);
     }
+  }
+
+  // Sudah login: satu klik langsung vote — tanpa dialog isi data.
+  if (locked) {
+    return (
+      <Button
+        className="w-full"
+        variant={isFav ? "accent" : "default"}
+        disabled={disabled || busy}
+        onClick={submit}
+      >
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isFav ? (
+          <Star className="h-4 w-4" />
+        ) : (
+          <Heart className="h-4 w-4" />
+        )}
+        {disabled ? "Event ditutup" : isFav ? "Favorit (+20)" : "Dukung (+5)"}
+      </Button>
+    );
   }
 
   return (
@@ -340,12 +392,15 @@ function QuestCard({
   participantId,
   participantName,
   voter,
+  locked,
   disabled,
 }: {
   quest: Quest;
   participantId: string;
   participantName: string;
   voter: VoterCtx;
+  /** Voter login + onboarded: dialog hanya untuk bukti, tanpa form data. */
+  locked: boolean;
   disabled: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
@@ -382,6 +437,10 @@ function QuestCard({
     }
     if (needsContent && !contentId) {
       toast.error("Pilih konten peserta dulu.");
+      return;
+    }
+    if (locked) {
+      void doSubmit();
       return;
     }
     confirm({
@@ -598,7 +657,9 @@ function QuestCard({
               </div>
             )}
 
-            <VoterFormFields data={voter.data} onChange={voter.setData} />
+            {!locked && (
+              <VoterFormFields data={voter.data} onChange={voter.setData} />
+            )}
             {isLink ? (
               <div className="space-y-1.5">
                 <Label>Link Postingan (boleh lebih dari 1, maks 5)</Label>
