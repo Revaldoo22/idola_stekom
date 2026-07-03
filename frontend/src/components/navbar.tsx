@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { AuthNav } from "@/components/auth-nav";
 
 export type NavLink = {
   href: string;
@@ -68,6 +69,8 @@ export function Navbar({
           <span className="font-bold sm:hidden">FKP</span>
         </Link>
 
+        {/* Right side */}
+        <div className="flex items-center gap-2">
         {/* Desktop nav */}
         <nav className="hidden items-center gap-1 md:flex">
           {links.map((l) => {
@@ -121,6 +124,9 @@ export function Navbar({
           )}
         </nav>
 
+        {/* Login / akun (halaman publik) */}
+        {!showLogout && <AuthNav />}
+
         {/* Mobile menu */}
         {(links.length > 0 || showLogout) && (
           <div className="md:hidden">
@@ -169,6 +175,7 @@ export function Navbar({
             </DropdownMenu>
           </div>
         )}
+        </div>
       </div>
 
       {title && (

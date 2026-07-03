@@ -34,23 +34,27 @@ const qs = (params: Record<string, string | number | undefined | null>) => {
 };
 
 // ----------------------------- Profile ------------------------------
+export type MyProfile = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone_number: string | null;
+  role: Profile["role"];
+  school_id: string | null;
+  class: string | null;
+  status: string | null;
+  region: string | null;
+  college_intent: "ya" | "tidak" | "ragu" | null;
+  onboarded: boolean;
+};
+
 export function useMyProfile() {
   return useQuery({
     queryKey: ["profile", "me"],
-    queryFn: async (): Promise<Profile | null> => {
+    queryFn: async (): Promise<MyProfile | null> => {
       try {
-        const { user } = await api<{
-          user: { sub: string; role: Profile["role"]; name?: string };
-        }>("/api/auth/me");
-        return {
-          id: user.sub,
-          name: user.name ?? "",
-          phone_number: "",
-          school_id: null,
-          role: user.role,
-          device_fingerprint: null,
-          created_at: "",
-        };
+        const { user } = await api<{ user: MyProfile }>("/api/auth/me");
+        return user;
       } catch {
         return null;
       }
