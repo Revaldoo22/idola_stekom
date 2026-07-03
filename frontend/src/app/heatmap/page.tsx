@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Flame, MapPin, Trophy } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { MaintenanceOverlay } from "@/components/maintenance-overlay";
@@ -38,10 +39,11 @@ function RankingList({
       {rows.map((r) => {
         const mine = r.school_id === highlightId;
         return (
-          <div
+          <Link
+            href={`/sekolah/${r.school_id}`}
             key={r.school_id}
             className={cn(
-              "relative overflow-hidden rounded-xl border p-3",
+              "relative block cursor-pointer overflow-hidden rounded-xl border p-3 transition-colors hover:border-primary/40",
               mine
                 ? "border-primary bg-primary/5 ring-1 ring-primary/30"
                 : "bg-card",
@@ -80,7 +82,7 @@ function RankingList({
                 {formatNumber(r.points)}
               </span>
             </div>
-          </div>
+          </Link>
         );
       })}
     </div>

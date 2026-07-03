@@ -221,6 +221,35 @@ export class RoundsService {
     );
   }
 
+  /** Detail satu sekolah + peringkat global & kabupaten. */
+  async schoolDetail(id: string) {
+    const rows = await this.db.query(
+      `with scores as (
+         select s.id, s.name, s.region_id,
+                coalesce(rg.name, 'Tanpa Kabupaten') as region_name,
+                coalesce((
+                  select sum(p.total_points) from participants p
+                  where p.school_id = s.id and p.status = 'active'
+                ), 0) as points
+         from schools s
+         left join regions rg on rg.id = s.region_id
+       ),
+       ranked as (
+         select *,
+                rank() over (order by points desc)::int as global_rank,
+                count(*) over ()::int as global_total,
+                rank() over (partition by region_id order by points desc)::int as region_rank,
+                count(*) over (partition by region_id)::int as region_total
+         from scores
+       )
+       select id as school_id, name as school_name, region_id, region_name,
+              points::int, global_rank, global_total, region_rank, region_total
+       from ranked where id = $1`,
+      [id],
+    );
+    return rows[0] ?? null;
+  }
+
   /**
    * Agregasi heatmap per kabupaten. Poin = jumlah total_points peserta
    * aktif (vote + quest); votes = jumlah vote masuk.

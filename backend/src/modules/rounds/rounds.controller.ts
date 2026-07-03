@@ -105,6 +105,11 @@ export class PublicRoundsController {
     return this.rounds.schoolRankings(regionId || undefined);
   }
 
+  @Get("schools/:id/detail")
+  schoolDetail(@Param("id", ParseUUIDPipe) id: string) {
+    return this.rounds.schoolDetail(id);
+  }
+
   @Get("active-round")
   async activeRound() {
     return (await this.rounds.active()) ?? null;
