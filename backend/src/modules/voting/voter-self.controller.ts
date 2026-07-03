@@ -54,7 +54,7 @@ export class VoterSelfController {
                 count(*) over (partition by region_id)::int as region_total
          from scores
        )
-       select r.name as school_name, r.region_name, r.points::int,
+       select r.id as school_id, r.region_id, r.name as school_name, r.region_name, r.points::int,
               r.global_rank, r.global_total, r.region_rank, r.region_total
        from ranked r
        join profiles pr on pr.school_id = r.id

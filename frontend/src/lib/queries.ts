@@ -643,6 +643,8 @@ export function useVoterToday(enabled: boolean) {
 }
 
 export type MySchoolRank = {
+  school_id: string;
+  region_id: string | null;
   school_name: string;
   region_name: string;
   points: number;
@@ -657,5 +659,25 @@ export function useMySchoolRank(enabled: boolean) {
     queryKey: ["my-school-rank"],
     enabled,
     queryFn: () => api<MySchoolRank | null>("/api/voter/school-rank"),
+  });
+}
+
+export type SchoolRankingRow = {
+  school_id: string;
+  school_name: string;
+  region_id: string | null;
+  region_name: string;
+  participants: number;
+  points: number;
+  rank: number;
+};
+
+export function useSchoolRankings(regionId?: string) {
+  return useQuery({
+    queryKey: ["school-rankings", regionId ?? "all"],
+    queryFn: () =>
+      api<SchoolRankingRow[]>(
+        `/api/public/school-rankings${regionId ? `?region_id=${regionId}` : ""}`,
+      ),
   });
 }

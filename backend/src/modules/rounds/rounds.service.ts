@@ -194,6 +194,34 @@ export class RoundsService {
   }
 
   /**
+   * Ranking sekolah (semua / satu kabupaten). Skor = jumlah total_points
+   * peserta aktif. Rank dihitung setelah filter kabupaten.
+   */
+  schoolRankings(regionId?: string) {
+    return this.db.query(
+      `with scores as (
+         select s.id as school_id, s.name as school_name, s.region_id,
+                coalesce(rg.name, 'Tanpa Kabupaten') as region_name,
+                coalesce((
+                  select sum(p.total_points) from participants p
+                  where p.school_id = s.id and p.status = 'active'
+                ), 0) as points,
+                (select count(*) from participants p
+                 where p.school_id = s.id and p.status = 'active')::int as participants
+         from schools s
+         left join regions rg on rg.id = s.region_id
+         where $1::uuid is null or s.region_id = $1
+       )
+       select school_id, school_name, region_id, region_name, participants,
+              points::int, rank() over (order by points desc)::int as rank
+       from scores
+       order by points desc, school_name
+       limit 300`,
+      [regionId ?? null],
+    );
+  }
+
+  /**
    * Agregasi heatmap per kabupaten. Poin = jumlah total_points peserta
    * aktif (vote + quest); votes = jumlah vote masuk.
    */

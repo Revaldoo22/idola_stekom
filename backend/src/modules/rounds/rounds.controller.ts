@@ -100,6 +100,11 @@ export class PublicRoundsController {
     return this.rounds.heatmap();
   }
 
+  @Get("school-rankings")
+  schoolRankings(@Query("region_id") regionId?: string) {
+    return this.rounds.schoolRankings(regionId || undefined);
+  }
+
   @Get("active-round")
   async activeRound() {
     return (await this.rounds.active()) ?? null;
