@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ClipboardCheck,
   Flag,
+  Gift,
   GraduationCap,
   LayoutDashboard,
   LogOut,
@@ -28,6 +29,7 @@ const NAV = [
   { href: "/admin/log", label: "Log Aktivitas", icon: ScrollText },
   { href: "/admin/quests", label: "Quest", icon: Trophy },
   { href: "/admin/rounds", label: "Gelombang", icon: Flag },
+  { href: "/admin/undian", label: "Undian", icon: Gift },
   { href: "/admin/schools", label: "Sekolah", icon: School },
 ];
 

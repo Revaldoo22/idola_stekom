@@ -22,6 +22,13 @@ export class Coupon {
   @Column({ type: "text", default: "follow" })
   source!: string;
 
+  /** Terisi saat kupon ini terpilih sebagai pemenang undian. */
+  @Column({ name: "won_at", type: "timestamptz", nullable: true })
+  wonAt!: Date | null;
+
+  @Column({ type: "text", nullable: true })
+  prize!: string | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 }
