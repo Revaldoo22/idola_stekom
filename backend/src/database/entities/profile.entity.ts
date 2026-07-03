@@ -62,6 +62,10 @@ export class Profile {
   @Column({ name: "followed_at", type: "timestamptz", nullable: true })
   followedAt!: Date | null;
 
+  /** Screenshot bukti follow (diverifikasi manual saat undian). */
+  @Column({ name: "follow_proof_url", type: "text", nullable: true })
+  followProofUrl!: string | null;
+
   /** True once the onboarding wizard has been completed. */
   @Column({ type: "boolean", default: false })
   onboarded!: boolean;

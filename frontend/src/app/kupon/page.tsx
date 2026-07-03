@@ -10,67 +10,157 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState, LoadingState } from "@/components/states";
 import { useMyCoupons, useMyProfile, type CouponRow } from "@/lib/queries";
 
-/** Render kartu kupon jadi PNG (canvas) lalu unduh. */
+/** Render kartu kupon jadi PNG (canvas, 2x retina) lalu unduh. */
 function downloadCoupon(c: CouponRow) {
-  const W = 900;
-  const H = 420;
+  const W = 1000;
+  const H = 460;
+  const SCALE = 2;
   const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
+  canvas.width = W * SCALE;
+  canvas.height = H * SCALE;
   const ctx = canvas.getContext("2d");
   if (!ctx) return void toast.error("Browser tidak mendukung unduhan.");
+  ctx.scale(SCALE, SCALE);
 
-  // Latar teal + panel putih
+  const r = (
+    x: number, y: number, w: number, h: number, rad: number,
+  ) => {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, rad);
+  };
+
+  // Latar gradasi laut Bali
   const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#0e7490");
-  bg.addColorStop(1, "#0891b2");
+  bg.addColorStop(0, "#164e63");
+  bg.addColorStop(0.55, "#0e7490");
+  bg.addColorStop(1, "#06b6d4");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.roundRect(40, 40, W - 80, H - 80, 24);
-  ctx.fill();
 
-  // Garis putus pemisah ala tiket
+  // Lingkaran dekor transparan
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  for (const [cx, cy, rad] of [
+    [120, 60, 130], [880, 400, 170], [720, 40, 70],
+  ] as const) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Tiket putih + bayangan
+  const TX = 56, TY = 56, TW = W - 112, TH = H - 112;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.35)";
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 10;
+  ctx.fillStyle = "#ffffff";
+  r(TX, TY, TW, TH, 22);
+  ctx.fill();
+  ctx.restore();
+
+  // Takik tiket (kiri-kanan garis sobek)
+  const STUB_X = TX + TW - 260;
+  ctx.fillStyle = "#0e7490";
+  const notch = (x: number, y: number) => {
+    ctx.beginPath();
+    ctx.arc(x, y, 14, 0, Math.PI * 2);
+    ctx.fillStyle = "#0d6f8f"; // warna latar di titik takik agar menyatu
+    ctx.fill();
+  };
+  notch(STUB_X, TY);
+  notch(STUB_X, TY + TH);
+
+  // Garis sobek
   ctx.strokeStyle = "#cbd5e1";
-  ctx.setLineDash([8, 8]);
+  ctx.setLineDash([6, 7]);
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(W - 280, 60);
-  ctx.lineTo(W - 280, H - 60);
+  ctx.moveTo(STUB_X, TY + 22);
+  ctx.lineTo(STUB_X, TY + TH - 22);
   ctx.stroke();
   ctx.setLineDash([]);
 
+  // Strip aksen oranye di kiri
+  const accent = ctx.createLinearGradient(0, TY, 0, TY + TH);
+  accent.addColorStop(0, "#fb923c");
+  accent.addColorStop(1, "#f97316");
+  ctx.fillStyle = accent;
+  ctx.beginPath();
+  ctx.roundRect(TX, TY, 10, TH, [22, 0, 0, 22]);
+  ctx.fill();
+
+  // Konten kiri
+  const LX = TX + 44;
   ctx.fillStyle = "#0e7490";
-  ctx.font = "bold 30px Arial";
-  ctx.fillText("YOUTH CHARACTER SUMMIT", 80, 110);
-  ctx.fillStyle = "#f97316";
-  ctx.font = "bold 22px Arial";
-  ctx.fillText("KUPON UNDIAN HANDPHONE", 80, 148);
+  ctx.font = "800 15px Arial";
+  ctx.fillText("Y O U T H   C H A R A C T E R   S U M M I T", LX, TY + 46);
 
   ctx.fillStyle = "#0f172a";
-  ctx.font = "bold 44px Courier New";
-  ctx.fillText(c.code, 80, 230);
+  ctx.font = "800 34px Arial";
+  ctx.fillText("Kupon Undian Handphone", LX, TY + 92);
 
-  ctx.fillStyle = "#475569";
-  ctx.font = "18px Arial";
-  ctx.fillText("Atas nama : " + (c.owner_name ?? "-"), 80, 280);
-  ctx.fillText(
-    "Terbit    : " + new Date(c.created_at).toLocaleDateString("id-ID"),
-    80,
-    308,
-  );
-  ctx.fillText("Simpan kupon ini. Pemenang diumumkan panitia.", 80, 336);
-
-  // Panel kanan
+  // Kode dalam panel
+  ctx.fillStyle = "#ecfeff";
+  r(LX, TY + 118, 420, 64, 14);
+  ctx.fill();
+  ctx.strokeStyle = "#a5f3fc";
+  ctx.lineWidth = 1.5;
+  r(LX, TY + 118, 420, 64, 14);
+  ctx.stroke();
   ctx.fillStyle = "#0e7490";
-  ctx.font = "bold 20px Arial";
-  ctx.fillText("HADIAH", W - 240, 150);
-  ctx.font = "bold 34px Arial";
-  ctx.fillText("HP", W - 240, 200);
-  ctx.font = "16px Arial";
-  ctx.fillStyle = "#475569";
-  ctx.fillText("diundi di akhir", W - 240, 240);
-  ctx.fillText("event", W - 240, 262);
+  ctx.font = "800 34px Courier New";
+  ctx.fillText(c.code, LX + 24, TY + 162);
+
+  ctx.fillStyle = "#334155";
+  ctx.font = "600 17px Arial";
+  ctx.fillText(c.owner_name ?? "-", LX, TY + 226);
+  ctx.fillStyle = "#64748b";
+  ctx.font = "15px Arial";
+  ctx.fillText(
+    "Terbit " +
+      new Date(c.created_at).toLocaleDateString("id-ID", {
+        day: "2-digit", month: "long", year: "numeric",
+      }),
+    LX,
+    TY + 252,
+  );
+  ctx.fillText(
+    "Simpan kupon ini - pemenang diumumkan panitia di akhir event.",
+    LX,
+    TY + 288,
+  );
+
+  // Pseudo-barcode dari kode
+  let bx = LX;
+  const by = TY + TH - 46;
+  for (const ch of (c.code + c.code).slice(0, 40)) {
+    const wBar = (ch.charCodeAt(0) % 3) + 1.5;
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(bx, by, wBar, 26);
+    bx += wBar + 3;
+  }
+
+  // Stub kanan
+  const SX = STUB_X + 34;
+  ctx.fillStyle = "#f97316";
+  ctx.font = "800 14px Arial";
+  ctx.fillText("HADIAH UTAMA", SX, TY + 66);
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "800 40px Arial";
+  ctx.fillText("HAND", SX, TY + 116);
+  ctx.fillText("PHONE", SX, TY + 160);
+  ctx.fillStyle = "#64748b";
+  ctx.font = "14px Arial";
+  ctx.fillText("Diundi oleh panitia", SX, TY + 196);
+
+  // Kode kecil vertikal di stub
+  ctx.save();
+  ctx.translate(TX + TW - 26, TY + TH - 30);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "600 13px Courier New";
+  ctx.fillText(c.code, 0, 0);
+  ctx.restore();
 
   const a = document.createElement("a");
   a.download = `kupon-${c.code}.png`;

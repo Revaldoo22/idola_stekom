@@ -212,13 +212,14 @@ export default function PublicParticipantPage({
               </CardContent>
             </Card>
 
+            {quests && quests.length > 0 && (
             <section>
               <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold">
                 <Trophy className="h-5 w-5 text-accent" />
                 Kerjakan quest untuk memberikan poin tambahan ke{" "}
                 {participant.name}
               </h3>
-              {!quests || quests.length === 0 ? (
+              {false ? (
                 <EmptyState title="Belum ada quest aktif" />
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -237,6 +238,7 @@ export default function PublicParticipantPage({
                 </div>
               )}
             </section>
+            )}
           </>
         )}
       </main>
@@ -304,6 +306,7 @@ function VoteDialog({
 }) {
   const [open, setOpen] = React.useState(false);
   const [showFollow, setShowFollow] = React.useState(false);
+  const [followProof, setFollowProof] = React.useState<File | null>(null);
   const [busy, setBusy] = React.useState(false);
   const qc = useQueryClient();
   const confirm = useConfirm();
@@ -336,6 +339,33 @@ function VoteDialog({
   async function doSubmit(followConfirmed = false) {
     setBusy(true);
     try {
+      // Follow pertama wajib lampirkan screenshot bukti.
+      let followProofUrl: string | undefined;
+      if (followConfirmed) {
+        if (!followProof) {
+          toast.error("Upload screenshot bukti follow dulu.");
+          return;
+        }
+        const img = await compressImage(followProof, {
+          maxSize: 900,
+          quality: 0.7,
+        });
+        const fd = new FormData();
+        fd.append("file", img);
+        try {
+          const up = await api<{ url: string }>("/api/upload-proof", {
+            method: "POST",
+            body: fd,
+          });
+          followProofUrl = new URL(up.url, window.location.origin).toString();
+        } catch (err) {
+          toast.error(
+            "Gagal mengunggah bukti: " +
+              (err instanceof Error ? err.message : ""),
+          );
+          return;
+        }
+      }
       const fingerprint = await getFingerprint();
       const res = await fetch("/api/vote", {
         method: "POST",
@@ -345,7 +375,9 @@ function VoteDialog({
           participant_id: participantId,
           fingerprint,
           kind,
-          ...(followConfirmed ? { follow_confirmed: true } : {}),
+          ...(followConfirmed
+            ? { follow_confirmed: true, follow_proof_url: followProofUrl }
+            : {}),
         }),
       });
       const data = await res.json();
@@ -418,9 +450,23 @@ function VoteDialog({
               </a>
             </Button>
           </div>
-          <Button onClick={() => doSubmit(true)} disabled={busy}>
+          <div className="space-y-1.5">
+            <Label>Screenshot Bukti Follow</Label>
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setFollowProof(e.target.files?.[0] ?? null)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Screenshot profil STEKOM yang menunjukkan kamu sudah follow.
+            </p>
+          </div>
+          <Button
+            onClick={() => doSubmit(true)}
+            disabled={busy || !followProof}
+          >
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            Sudah follow, kirim vote (+{pts})
+            Kirim bukti &amp; vote (+{pts})
           </Button>
         </DialogContent>
       </Dialog>

@@ -36,7 +36,8 @@ export class RaffleController {
              count(*) filter (where won_at is null)::int as remaining
       from coupons`);
     const winners = await this.db.query(`
-      select c.code, c.prize, c.won_at, pr.name, pr.phone_number, pr.email
+      select c.code, c.prize, c.won_at, pr.name, pr.phone_number, pr.email,
+             pr.follow_proof_url
       from coupons c join profiles pr on pr.id = c.profile_id
       where c.won_at is not null
       order by c.won_at desc`);

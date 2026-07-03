@@ -59,6 +59,11 @@ export class CastVoteDto extends VoterInfoDto {
   /** Voter menyatakan sudah follow akun Univ STEKOM (gate vote pertama). */
   @IsOptional()
   follow_confirmed?: boolean;
+
+  /** Screenshot bukti follow (wajib saat follow_confirmed). */
+  @IsOptional()
+  @IsUrl({ require_tld: false }, { message: "Bukti follow tidak valid" })
+  follow_proof_url?: string;
 }
 
 export class CreateSubmissionDto extends VoterInfoDto {

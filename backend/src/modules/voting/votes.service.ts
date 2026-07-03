@@ -100,6 +100,7 @@ export class VotesService {
     let grantCoupon = false;
     if (kind === "daily5" && profile && !profile.followedAt) {
       if (!d.follow_confirmed) throw new VoteError("FOLLOW_REQUIRED");
+      if (!d.follow_proof_url) throw new VoteError("FOLLOW_PROOF_REQUIRED");
       grantCoupon = true; // follow pertama + vote sukses = kupon undian
     }
 
@@ -135,9 +136,13 @@ export class VotesService {
 
         // Follow terkonfirmasi: catat + terbitkan kupon undian (sekali).
         if (grantCoupon && profile) {
-          await em
-            .getRepository(Profile)
-            .update({ id: profile.id }, { followedAt: new Date() });
+          await em.getRepository(Profile).update(
+            { id: profile.id },
+            {
+              followedAt: new Date(),
+              followProofUrl: d.follow_proof_url ?? null,
+            },
+          );
           const code =
             "YCS-" +
             Array.from({ length: 2 }, () =>

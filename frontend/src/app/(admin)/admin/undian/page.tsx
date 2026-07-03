@@ -20,6 +20,7 @@ type Winner = {
   name: string | null;
   phone_number: string | null;
   email: string | null;
+  follow_proof_url?: string | null;
 };
 
 type Summary = { total: number; remaining: number; winners: Winner[] };
@@ -188,6 +189,19 @@ export default function AdminRafflePage() {
                   <p className="truncate text-xs text-muted-foreground">
                     {w.phone_number} · {w.code} ·{" "}
                     {new Date(w.won_at).toLocaleString("id-ID")}
+                    {w.follow_proof_url && (
+                      <>
+                        {" "}·{" "}
+                        <a
+                          href={w.follow_proof_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          Bukti follow
+                        </a>
+                      </>
+                    )}
                   </p>
                 </div>
                 <Button
