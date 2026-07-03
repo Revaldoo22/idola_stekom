@@ -62,6 +62,16 @@ export default function AccountPage() {
     }
   }, [me, isLoading, router, ready]);
 
+  // Pilih sekolah terdaftar → kabupaten ikut otomatis.
+  React.useEffect(() => {
+    if (!ready) return;
+    const match = (schools ?? []).find(
+      (sc) => sc.name.trim().toLowerCase() === schoolText.trim().toLowerCase(),
+    );
+    const rid = (match as { region_id?: string | null } | undefined)?.region_id;
+    if (rid) setRegion(rid);
+  }, [schoolText, schools, ready]);
+
   async function save() {
     if (name.trim().length < 2) return void toast.error("Nama minimal 2 karakter.");
     if (pw && pw.length < 6) return void toast.error("Password minimal 6 karakter.");

@@ -22,6 +22,8 @@ import { useRegions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { School } from "@/types/database";
 
+type SchoolRow = School & { region_id?: string | null };
+
 type Me = {
   id: string;
   name: string | null;
@@ -53,7 +55,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { data: regions } = useRegions();
   const [me, setMe] = React.useState<Me | null>(null);
-  const [schools, setSchools] = React.useState<School[]>([]);
+  const [schools, setSchools] = React.useState<SchoolRow[]>([]);
   const [step, setStep] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
 
@@ -83,12 +85,20 @@ export default function OnboardingPage() {
         router.replace("/login");
       }
       try {
-        setSchools(await api<School[]>("/api/public/schools"));
+        setSchools(await api<SchoolRow[]>("/api/public/schools"));
       } catch {
         /* datalist kosong tidak fatal */
       }
     })();
   }, [router]);
+
+  // Sekolah terdaftar sudah punya kabupaten → isi otomatis (tetap bisa diubah).
+  React.useEffect(() => {
+    const match = schools.find(
+      (sc) => sc.name.trim().toLowerCase() === schoolText.trim().toLowerCase(),
+    );
+    if (match?.region_id) setRegion(match.region_id);
+  }, [schoolText, schools]);
 
   function validateStep(s: number): string | null {
     if (s === 0) {
