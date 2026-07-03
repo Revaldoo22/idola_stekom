@@ -17,7 +17,19 @@ export class SchoolsService {
   ) {}
 
   list() {
-    return this.schools.find({ order: { name: "ASC" } });
+    return this.schools
+      .createQueryBuilder("s")
+      .leftJoinAndMapOne("s.region", "regions", "r", "r.id = s.region_id")
+      .orderBy("s.name", "ASC")
+      .getMany();
+  }
+
+  /** Pindahkan sekolah ke kabupaten (null = lepas). */
+  async setRegion(id: string, regionId: string | null) {
+    const school = await this.schools.findOneBy({ id });
+    if (!school) throw new NotFoundException("Sekolah tidak ditemukan.");
+    school.regionId = regionId;
+    return this.schools.save(school);
   }
 
   /** Case-insensitive find-or-create so duplicate names never pile up. */

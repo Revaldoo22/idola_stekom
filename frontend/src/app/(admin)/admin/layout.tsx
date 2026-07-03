@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Flag,
   LayoutDashboard,
   GraduationCap,
   ClipboardCheck,
@@ -26,6 +27,7 @@ export default function AdminLayout({
           { href: "/admin/submissions", label: "Submission", icon: ClipboardCheck },
           { href: "/admin/log", label: "Log", icon: ScrollText },
           { href: "/admin/quests", label: "Quest", icon: Trophy },
+          { href: "/admin/rounds", label: "Gelombang", icon: Flag },
           { href: "/admin/schools", label: "Sekolah", icon: School },
         ]}
         showLogout

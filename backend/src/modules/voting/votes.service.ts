@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { DailyVote, Participant } from "../../database/entities";
 import { SettingsService } from "../settings/settings.service";
+import { RoundsService } from "../rounds/rounds.service";
 import { AntiCheatService } from "./anti-cheat.service";
 import { CastVoteDto } from "./dto/voter-info.dto";
 
@@ -23,6 +24,7 @@ export class VotesService {
     private readonly participants: Repository<Participant>,
     private readonly settings: SettingsService,
     private readonly antiCheat: AntiCheatService,
+    private readonly rounds: RoundsService,
   ) {}
 
   /** Port of cast_vote v3 (migration 0022) — same checks, same error codes. */
@@ -90,12 +92,16 @@ export class VotesService {
       if (Number(cnt?.c ?? 0) >= limit) throw new VoteError("IPLIMIT");
     }
 
+    // Stempel gelombang aktif (null bila tidak ada round berjalan).
+    const activeRound = await this.rounds.active();
+
     // Insert + point bump in one transaction; unique indexes are the final
     // guard against concurrent double-submits (Postgres error 23505).
     try {
       return await this.dataSource.transaction(async (em) => {
         await em.getRepository(DailyVote).insert({
           participantId: d.participant_id,
+          roundId: activeRound?.id ?? null,
           deviceFingerprint: d.fingerprint,
           serverHash,
           ipHash,

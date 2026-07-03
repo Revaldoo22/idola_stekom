@@ -5,17 +5,20 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 
-@Entity("schools")
-export class School {
+/** Kabupaten/kota. `code` = kode BPS — kunci join ke GeoJSON peta nanti. */
+@Entity("regions")
+export class Region {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
   @Column({ type: "text" })
   name!: string;
 
-  /** Kabupaten/kota (regions) — dasar pengelompokan heatmap & gelombang. */
-  @Column({ name: "region_id", type: "uuid", nullable: true })
-  regionId!: string | null;
+  @Column({ type: "text", unique: true, nullable: true })
+  code!: string | null;
+
+  @Column({ type: "text", nullable: true })
+  province!: string | null;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;

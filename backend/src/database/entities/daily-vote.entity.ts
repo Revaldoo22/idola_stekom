@@ -19,6 +19,11 @@ export class DailyVote {
   @Column({ name: "participant_id", type: "uuid" })
   participantId!: string;
 
+  /** Gelombang saat vote masuk (null = di luar gelombang aktif). */
+  @Column({ name: "round_id", type: "uuid", nullable: true })
+  @Index("dv_round")
+  roundId!: string | null;
+
   @Column({ name: "vote_date", type: "date", default: () => "CURRENT_DATE" })
   voteDate!: string;
 

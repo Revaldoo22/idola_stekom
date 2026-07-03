@@ -13,6 +13,13 @@ export { Submission, type SubmissionStatus } from "./submission.entity";
 export { SubmissionProof } from "./submission-proof.entity";
 export { ParticipantContent } from "./participant-content.entity";
 export { AppSettings } from "./app-settings.entity";
+export { Region } from "./region.entity";
+export {
+  Round,
+  RoundSchool,
+  type RoundStatus,
+  type RoundSchoolStatus,
+} from "./round.entity";
 
 import { School } from "./school.entity";
 import { Participant } from "./participant.entity";
@@ -23,6 +30,8 @@ import { Submission } from "./submission.entity";
 import { SubmissionProof } from "./submission-proof.entity";
 import { ParticipantContent } from "./participant-content.entity";
 import { AppSettings } from "./app-settings.entity";
+import { Region } from "./region.entity";
+import { Round, RoundSchool } from "./round.entity";
 
 /** Single registration point — add new entities here once. */
 export const ENTITIES = [
@@ -35,4 +44,7 @@ export const ENTITIES = [
   SubmissionProof,
   ParticipantContent,
   AppSettings,
+  Region,
+  Round,
+  RoundSchool,
 ];

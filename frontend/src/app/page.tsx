@@ -15,6 +15,7 @@ export default function HomePage() {
       <Navbar
         links={[
           { href: "/ranking", label: "Ranking" },
+          { href: "/heatmap", label: "Heatmap" },
           { href: "/top-voter", label: "Top Voter" },
         ]}
       />

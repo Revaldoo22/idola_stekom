@@ -524,3 +524,83 @@ export function useTopVoters(limit = 5) {
     queryFn: () => api<TopVoter[]>(`/api/public/top-voters${qs({ limit })}`),
   });
 }
+
+// ------------------------- Regions & Rounds --------------------------
+export type Region = {
+  id: string;
+  name: string;
+  code: string | null;
+  province: string | null;
+};
+
+export type Round = {
+  id: string;
+  name: string;
+  status: "draft" | "active" | "closed";
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at: string;
+  school_count?: number;
+  lolos_count?: number;
+  total_points?: number;
+};
+
+export type RoundStanding = {
+  school_id: string;
+  school_name: string;
+  status: "active" | "lolos" | "gugur";
+  region_id: string | null;
+  region_name: string;
+  points: number;
+  votes: number;
+};
+
+export type HeatmapRow = {
+  region_id: string;
+  region_name: string;
+  code: string | null;
+  province: string | null;
+  schools: number;
+  participants: number;
+  points: number;
+  votes: number;
+};
+
+export function useRegions() {
+  return useQuery({
+    queryKey: ["regions"],
+    queryFn: () => api<Region[]>("/api/public/regions"),
+  });
+}
+
+export function useRounds() {
+  return useQuery({
+    queryKey: ["rounds"],
+    queryFn: () => api<Round[]>("/api/admin/rounds"),
+  });
+}
+
+export function useRoundStandings(roundId?: string) {
+  return useQuery({
+    queryKey: ["round-standings", roundId],
+    enabled: !!roundId,
+    queryFn: () => api<RoundStanding[]>(`/api/admin/rounds/${roundId}/standings`),
+  });
+}
+
+export function useActiveRound() {
+  return useQuery({
+    queryKey: ["active-round"],
+    queryFn: () => api<Round | null>("/api/public/active-round"),
+  });
+}
+
+export function useHeatmap(roundId?: string) {
+  return useQuery({
+    queryKey: ["heatmap", roundId ?? "all"],
+    queryFn: () =>
+      api<HeatmapRow[]>(
+        `/api/public/heatmap${roundId ? `?round_id=${roundId}` : ""}`,
+      ),
+  });
+}

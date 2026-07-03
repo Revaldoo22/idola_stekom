@@ -9,8 +9,15 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
+import { IsOptional, IsUUID } from "class-validator";
 import { SchoolsService } from "./schools.service";
 import { CreateSchoolDto } from "./dto/create-school.dto";
+
+class SetRegionDto {
+  @IsOptional()
+  @IsUUID()
+  region_id?: string | null;
+}
 import { JwtGuard } from "../../common/guards/jwt.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
@@ -42,6 +49,14 @@ export class SchoolsController {
     @Body() dto: CreateSchoolDto,
   ) {
     return this.schools.rename(id, dto);
+  }
+
+  @Patch(":id/region")
+  setRegion(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SetRegionDto,
+  ) {
+    return this.schools.setRegion(id, dto.region_id ?? null);
   }
 
   @Delete(":id")
