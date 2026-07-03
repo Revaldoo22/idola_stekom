@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart3,
   GraduationCap,
   School,
   ThumbsUp,
@@ -23,27 +24,104 @@ import {
 } from "@/lib/queries";
 import { formatNumber } from "@/lib/utils";
 import { EventToggle } from "@/components/event-toggle";
+import { cn } from "@/lib/utils";
+
+type Tone = "indigo" | "violet" | "sky" | "emerald" | "amber";
+
+const TONES: Record<Tone, { chip: string; glow: string }> = {
+  indigo: {
+    chip: "bg-indigo-500/12 text-indigo-600 dark:text-indigo-400",
+    glow: "from-indigo-500/10",
+  },
+  violet: {
+    chip: "bg-violet-500/12 text-violet-600 dark:text-violet-400",
+    glow: "from-violet-500/10",
+  },
+  sky: {
+    chip: "bg-sky-500/12 text-sky-600 dark:text-sky-400",
+    glow: "from-sky-500/10",
+  },
+  emerald: {
+    chip: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400",
+    glow: "from-emerald-500/10",
+  },
+  amber: {
+    chip: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+    glow: "from-amber-500/10",
+  },
+};
 
 function StatCard({
   icon: Icon,
   label,
   value,
+  tone,
 }: {
   icon: React.ElementType;
   label: string;
   value: React.ReactNode;
+  tone: Tone;
 }) {
+  const t = TONES[tone];
   return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10">
-          <Icon className="h-5 w-5 text-primary" />
+    <Card className="card-lift relative overflow-hidden">
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent",
+          t.glow,
+        )}
+      />
+      <CardContent className="relative flex items-center gap-3.5 p-5">
+        <div
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+            t.chip,
+          )}
+        >
+          <Icon className="h-5 w-5" />
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-2xl font-bold">{value}</p>
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-muted-foreground">
+            {label}
+          </p>
+          <p className="text-2xl font-extrabold tabular-nums tracking-tight">
+            {value}
+          </p>
         </div>
       </CardContent>
+    </Card>
+  );
+}
+
+function ChartCard({
+  icon: Icon,
+  title,
+  desc,
+  className,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  desc: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className={className}>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2.5 text-base">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Icon className="h-4 w-4" />
+          </span>
+          <span>
+            {title}
+            <span className="block text-xs font-normal text-muted-foreground">
+              {desc}
+            </span>
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
     </Card>
   );
 }
@@ -56,7 +134,16 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard Admin</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Dashboard <span className="text-gradient">Admin</span>
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Ringkasan event 14 hari terakhir.
+          </p>
+        </div>
+      </div>
 
       <EventToggle />
 
@@ -70,77 +157,77 @@ export default function AdminDashboard() {
             icon={School}
             label="Total Sekolah"
             value={formatNumber(stats?.total_schools)}
+            tone="sky"
           />
           <StatCard
             icon={GraduationCap}
             label="Total Peserta"
             value={formatNumber(stats?.total_participants)}
+            tone="indigo"
           />
           <StatCard
             icon={Users}
             label="Total Voter"
             value={formatNumber(stats?.total_voters)}
+            tone="violet"
           />
           <StatCard
             icon={ThumbsUp}
             label="Total Vote"
             value={formatNumber(stats?.total_votes)}
+            tone="emerald"
           />
           <StatCard
             icon={Trophy}
             label="Total Poin"
             value={formatNumber(stats?.total_points)}
+            tone="amber"
           />
         </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Vote Harian (14 hari)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {votes && votes.length > 0 ? (
-              <DailyVotesChart data={votes} />
-            ) : (
-              <EmptyState title="Belum ada data vote" />
-            )}
-          </CardContent>
-        </Card>
+        <ChartCard
+          icon={BarChart3}
+          title="Vote Harian"
+          desc="Jumlah vote masuk per hari, 14 hari terakhir"
+        >
+          {votes && votes.length > 0 ? (
+            <DailyVotesChart data={votes} />
+          ) : (
+            <EmptyState title="Belum ada data vote" />
+          )}
+        </ChartCard>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Pertumbuhan Voter
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {growth && growth.length > 0 ? (
-              <VoterGrowthChart data={growth} />
-            ) : (
-              <EmptyState title="Belum ada data voter" />
-            )}
-          </CardContent>
-        </Card>
+        <ChartCard
+          icon={TrendingUp}
+          title="Pertumbuhan Voter"
+          desc="Akumulasi voter unik per hari"
+        >
+          {growth && growth.length > 0 ? (
+            <VoterGrowthChart data={growth} />
+          ) : (
+            <EmptyState title="Belum ada data voter" />
+          )}
+        </ChartCard>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Peserta Teratas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {top && top.length > 0 ? (
-              <TopParticipantsChart
-                data={top.map((p) => ({
-                  name: p.name,
-                  total_points: p.total_points,
-                }))}
-              />
-            ) : (
-              <EmptyState title="Belum ada peserta" />
-            )}
-          </CardContent>
-        </Card>
+        <ChartCard
+          icon={Trophy}
+          title="Peserta Teratas"
+          desc="8 peserta dengan poin tertinggi"
+          className="lg:col-span-2"
+        >
+          {top && top.length > 0 ? (
+            <TopParticipantsChart
+              data={top.map((p) => ({
+                name: p.name,
+                total_points: p.total_points,
+              }))}
+            />
+          ) : (
+            <EmptyState title="Belum ada peserta" />
+          )}
+        </ChartCard>
       </div>
     </div>
   );

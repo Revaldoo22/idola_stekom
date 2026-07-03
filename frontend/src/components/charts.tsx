@@ -14,6 +14,15 @@ import {
   YAxis,
 } from "recharts";
 
+const tooltipStyle = {
+  borderRadius: 12,
+  border: "1px solid hsl(var(--border))",
+  background: "hsl(var(--card))",
+  color: "hsl(var(--foreground))",
+  fontSize: 12,
+  boxShadow: "0 4px 20px rgb(0 0 0 / 0.08)",
+};
+
 const fmtDay = (d: string) =>
   new Date(d).toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
 
@@ -35,6 +44,7 @@ export function PointGrowthChart({
         <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} minTickGap={24} tickMargin={6} />
         <YAxis fontSize={12} allowDecimals={false} />
         <Tooltip
+          contentStyle={tooltipStyle}
           labelFormatter={(l) => fmtDay(l as string)}
           formatter={(v) => [`${v} poin`, "Kumulatif"]}
         />
@@ -62,6 +72,7 @@ export function DailyVotesChart({
         <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} minTickGap={24} tickMargin={6} />
         <YAxis fontSize={12} allowDecimals={false} />
         <Tooltip
+          contentStyle={tooltipStyle}
           labelFormatter={(l) => fmtDay(l as string)}
           formatter={(v) => [`${v} vote`, "Harian"]}
         />
@@ -83,6 +94,7 @@ export function VoterGrowthChart({
         <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} minTickGap={24} tickMargin={6} />
         <YAxis fontSize={12} allowDecimals={false} />
         <Tooltip
+          contentStyle={tooltipStyle}
           labelFormatter={(l) => fmtDay(l as string)}
           formatter={(v) => [`${v} voter`, "Kumulatif"]}
         />
@@ -119,7 +131,7 @@ export function TopParticipantsChart({
           width={110}
           tickFormatter={(n: string) => (n.length > 14 ? n.slice(0, 13) + "…" : n)}
         />
-        <Tooltip formatter={(v) => [`${v} poin`, "Total"]} />
+        <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v} poin`, "Total"]} />
         <Bar dataKey="total_points" fill="hsl(243 75% 59%)" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>

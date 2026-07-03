@@ -37,11 +37,15 @@ export function EventToggle() {
   }
 
   return (
-    <Card>
+    <Card
+      className={`border-l-4 ${
+        open ? "border-l-emerald-500" : "border-l-destructive"
+      }`}
+    >
       <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="flex items-center gap-3">
           <div
-            className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+            className={`relative flex h-10 w-10 items-center justify-center rounded-xl ${
               open ? "bg-emerald-500/10" : "bg-destructive/10"
             }`}
           >
@@ -50,6 +54,11 @@ export function EventToggle() {
             ) : (
               <Lock className="h-5 w-5 text-destructive" />
             )}
+            <span
+              className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-card ${
+                open ? "animate-pulse bg-emerald-500" : "bg-destructive"
+              }`}
+            />
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Status Event</p>
