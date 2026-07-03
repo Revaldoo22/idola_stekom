@@ -4,25 +4,31 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { randomBytes } from "crypto";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { extname, join } from "path";
+import { DepotService } from "./depot.service";
 
 const LOCAL_DIR = "uploads";
 
 /**
- * Penyimpanan file dual-driver:
- *   STORAGE_DRIVER=local (default) → ./uploads, diserve statis di /uploads/*
- *   STORAGE_DRIVER=s3             → bucket S3-compatible (MinIO/R2/Spaces/AWS)
+ * Penyimpanan file multi-driver (STORAGE_DRIVER):
+ *   local (default) → ./uploads, diserve statis di /uploads/*
+ *   s3              → bucket S3-compatible (MinIO/R2/Spaces/AWS)
+ *   depot           → Depot media backend; DB simpan /api/media/:fileId
+ *                     (URL permanen milik app — signed URL diminta segar
+ *                     saat diakses, karena umurnya pendek)
  * put() mengembalikan URL publik file.
  */
 @Injectable()
 export class StorageService {
   private s3: S3Client | null = null;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly depot: DepotService,
+  ) {}
 
-  private get driver(): "local" | "s3" {
-    return this.config.get<string>("STORAGE_DRIVER", "local") === "s3"
-      ? "s3"
-      : "local";
+  private get driver(): "local" | "s3" | "depot" {
+    const d = this.config.get<string>("STORAGE_DRIVER", "local");
+    return d === "s3" || d === "depot" ? d : "local";
   }
 
   private client(): S3Client {
@@ -44,6 +50,11 @@ export class StorageService {
 
   /** Simpan file, balikan URL publiknya. */
   async put(buffer: Buffer, originalName: string, mimeType: string) {
+    if (this.driver === "depot") {
+      const { fileId } = await this.depot.upload(buffer, originalName, mimeType);
+      return { key: fileId, url: `/api/media/${fileId}` };
+    }
+
     const key = `${randomBytes(12).toString("hex")}${extname(originalName).toLowerCase()}`;
 
     if (this.driver === "local") {
@@ -68,8 +79,6 @@ export class StorageService {
       }),
     );
 
-    // URL publik: pakai S3_PUBLIC_URL (CDN/custom domain) bila ada,
-    // fallback path-style endpoint/bucket/key.
     const base =
       this.config.get<string>("S3_PUBLIC_URL") ??
       `${this.config.get<string>("S3_ENDPOINT", "")}/${bucket}`;

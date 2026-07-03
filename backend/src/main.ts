@@ -7,7 +7,9 @@ import { join } from "path";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true, // verifikasi HMAC webhook Depot butuh body mentah
+  });
   const config = app.get(ConfigService);
 
   app.setGlobalPrefix("api", { exclude: ["uploads/(.*)"] });
