@@ -16,11 +16,10 @@ export default function HomePage() {
       <EventClosedOverlay />
       <Navbar />
 
-      {/* Video pembuka: full layar, konten hero muncul setelah scroll */}
-      <section className="relative h-[calc(100svh-4rem)] overflow-hidden bg-black">
-        {/* Iframe di-scale agar menutupi layar (cover) di semua rasio */}
+      {/* Video pembuka. Mobile: 16:9 utuh (tanpa crop); desktop: cover full layar */}
+      <section className="relative overflow-hidden bg-black md:h-[calc(100svh-4rem)]">
         <iframe
-          className="pointer-events-none absolute left-1/2 top-1/2 h-[56.25vw] min-h-full w-[177.78svh] min-w-full -translate-x-1/2 -translate-y-1/2"
+          className="pointer-events-none aspect-video w-full md:absolute md:left-1/2 md:top-1/2 md:aspect-auto md:h-[56.25vw] md:min-h-full md:w-[177.78svh] md:min-w-full md:-translate-x-1/2 md:-translate-y-1/2"
           src="https://www.youtube.com/embed/unCD3pcd0FA?autoplay=1&mute=1&loop=1&playlist=unCD3pcd0FA&controls=0&rel=0&playsinline=1&modestbranding=1"
           title="Youth Character Summit"
           allow="autoplay; encrypted-media; picture-in-picture"
@@ -30,7 +29,7 @@ export default function HomePage() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/70 to-transparent" />
         <a
           href="#hero"
-          className="absolute inset-x-0 bottom-5 z-10 mx-auto flex w-fit cursor-pointer flex-col items-center gap-1 text-xs font-semibold text-white/90 transition-colors hover:text-white"
+          className="absolute inset-x-0 bottom-2 z-10 mx-auto flex w-fit cursor-pointer flex-col items-center gap-1 text-xs font-semibold text-white/90 transition-colors hover:text-white md:bottom-5"
         >
           Scroll untuk mulai mendukung
           <ChevronDown className="h-5 w-5 animate-bounce" />
