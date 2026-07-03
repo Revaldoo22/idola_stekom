@@ -61,11 +61,11 @@ class QuestDto {
   content_kind?: "engage" | "sound" | null;
 
   @IsOptional()
-  @IsUrl({}, { message: "Link tidak valid" })
+  @IsUrl({ require_tld: false }, { message: "Link tidak valid" })
   ref_link?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   ref_image?: string;
 }
 

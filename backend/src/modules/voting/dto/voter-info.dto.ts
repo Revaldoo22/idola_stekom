@@ -67,7 +67,7 @@ export class CreateSubmissionDto extends VoterInfoDto {
   @IsArray()
   @ArrayMinSize(1, { message: "Lampirkan minimal 1 bukti" })
   @ArrayMaxSize(5, { message: "Maksimal 5 bukti" })
-  @IsUrl({}, { each: true, message: "Bukti tidak valid" })
+  @IsUrl({ require_tld: false }, { each: true, message: "Bukti tidak valid" })
   proof_urls!: string[];
 
   @IsOptional()

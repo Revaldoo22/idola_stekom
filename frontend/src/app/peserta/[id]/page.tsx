@@ -317,7 +317,7 @@ function VoteDialog({
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error ?? "Gagal memberikan dukungan.");
+        toast.error((Array.isArray(data.message) ? data.message[0] : data.message) ?? data.error ?? "Gagal memberikan dukungan.");
         return;
       }
       voter.persist(voter.data);
@@ -505,7 +505,7 @@ function QuestCard({
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error ?? "Gagal mengirim submission.");
+        toast.error((Array.isArray(data.message) ? data.message[0] : data.message) ?? data.error ?? "Gagal mengirim submission.");
         return;
       }
       voter.persist(voter.data);

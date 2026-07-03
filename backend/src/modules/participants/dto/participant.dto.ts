@@ -39,7 +39,7 @@ export class CreateParticipantDto {
   description?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   photo_url?: string;
 }
 
