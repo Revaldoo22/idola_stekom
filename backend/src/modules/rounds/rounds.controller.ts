@@ -42,17 +42,39 @@ class PopulateDto {
   from_round_id?: string;
 }
 
-class ScheduleDto {
+class UpdateRoundDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  starts_at?: string | null;
+
   @IsOptional()
   @IsString()
   ends_at?: string | null;
-}
 
-class CloseDto {
+  @IsOptional()
   @IsInt()
   @Min(1)
   @Max(100)
-  top_n!: number;
+  top_n?: number;
+}
+
+class AddSchoolDto {
+  @IsUUID()
+  school_id!: string;
+}
+
+class CloseDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  top_n?: number;
 }
 
 @Controller("admin/rounds")
@@ -81,9 +103,27 @@ export class RoundsController {
     return this.rounds.populate(id, dto.source, dto.from_round_id);
   }
 
-  @Patch(":id/schedule")
-  schedule(@Param("id", ParseUUIDPipe) id: string, @Body() dto: ScheduleDto) {
-    return this.rounds.schedule(id, dto.ends_at ?? null);
+  @Patch(":id")
+  update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: UpdateRoundDto) {
+    return this.rounds.updateSettings(id, dto);
+  }
+
+  @Get(":id/schools")
+  roundSchools(@Param("id", ParseUUIDPipe) id: string) {
+    return this.rounds.roundSchoolList(id);
+  }
+
+  @Post(":id/schools")
+  addSchool(@Param("id", ParseUUIDPipe) id: string, @Body() dto: AddSchoolDto) {
+    return this.rounds.addSchool(id, dto.school_id);
+  }
+
+  @Delete(":id/schools/:schoolId")
+  removeSchool(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("schoolId", ParseUUIDPipe) schoolId: string,
+  ) {
+    return this.rounds.removeSchool(id, schoolId);
   }
 
   @Post(":id/activate")

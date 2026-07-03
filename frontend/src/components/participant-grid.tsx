@@ -3,23 +3,34 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Globe2, MapPin, School as SchoolIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { CardSkeletonGrid, EmptyState, ErrorState } from "@/components/states";
-import { useParticipants } from "@/lib/queries";
+import { useMyProfile, useParticipants } from "@/lib/queries";
 import { formatNumber } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
+type Scope = "school" | "region" | "all";
+
 export function ParticipantGrid() {
   const { data, isLoading, isError, refetch } = useParticipants();
+  const { data: me } = useMyProfile();
   const [search, setSearch] = React.useState("");
   const [page, setPage] = React.useState(1);
+  const [scope, setScope] = React.useState<Scope>("all");
 
-  React.useEffect(() => setPage(1), [search]);
+  // Voter login: default lihat peserta sekolahnya sendiri.
+  const voterReady = !!me && me.role === "voter" && me.onboarded;
+  React.useEffect(() => {
+    if (voterReady && me?.school_id) setScope("school");
+  }, [voterReady, me?.school_id]);
+
+  React.useEffect(() => setPage(1), [search, scope]);
 
   if (isLoading) return <CardSkeletonGrid />;
   if (isError) return <ErrorState onRetry={() => refetch()} />;
@@ -27,14 +38,27 @@ export function ParticipantGrid() {
   const active = (data ?? [])
     .filter((p) => p.status === "active")
     .sort((a, b) => a.name.localeCompare(b.name, "id"));
+
+  // Filter lingkup (sekolahku / kabupatenku / semua) untuk voter login.
+  const scoped =
+    !voterReady || scope === "all"
+      ? active
+      : active.filter((p) => {
+          const sc = p.schools as
+            | { id: string; region_id?: string | null }
+            | null;
+          if (scope === "school") return sc?.id === me?.school_id;
+          return !!sc?.region_id && sc.region_id === me?.region_id;
+        });
+
   const q = search.trim().toLowerCase();
   const list = q
-    ? active.filter(
+    ? scoped.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.schools?.name?.toLowerCase().includes(q)
       )
-    : active;
+    : scoped;
 
   if (active.length === 0)
     return (
@@ -48,16 +72,56 @@ export function ParticipantGrid() {
   const current = Math.min(page, pageCount);
   const paged = list.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
+  const SCOPES: { key: Scope; label: string; icon: React.ElementType }[] = [
+    { key: "school", label: "Sekolahku", icon: SchoolIcon },
+    { key: "region", label: "Kabupatenku", icon: MapPin },
+    { key: "all", label: "Semua", icon: Globe2 },
+  ];
+
   return (
     <div className="space-y-4">
-      <Input
-        placeholder="Cari peserta atau sekolah..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
-      />
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          placeholder="Cari peserta atau sekolah..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full sm:max-w-sm"
+        />
+        {voterReady && (
+          <div className="flex rounded-xl border p-1 text-sm font-medium">
+            {SCOPES.map((sc) => {
+              const Icon = sc.icon;
+              return (
+                <button
+                  key={sc.key}
+                  onClick={() => setScope(sc.key)}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors",
+                    scope === sc.key
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {sc.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
       {list.length === 0 ? (
-        <EmptyState title="Tidak ada peserta cocok pencarian" />
+        <EmptyState
+          title={
+            q
+              ? "Tidak ada peserta cocok pencarian"
+              : scope === "school"
+                ? "Belum ada peserta dari sekolahmu"
+                : scope === "region"
+                  ? "Belum ada peserta dari kabupatenmu"
+                  : "Belum ada peserta"
+          }
+        />
       ) : (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {paged.map((p) => (
@@ -90,8 +154,9 @@ export function ParticipantGrid() {
                 </div>
                 <CardContent className="p-3">
                   <p className="truncate text-sm font-semibold">{p.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {p.schools?.name ?? "—"}
+                  <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                    <SchoolIcon className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{p.schools?.name ?? "—"}</span>
                   </p>
                   <div className="mt-2 flex items-center justify-end text-xs font-semibold text-primary">
                     Dukung

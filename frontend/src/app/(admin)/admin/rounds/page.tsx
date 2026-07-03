@@ -6,9 +6,11 @@ import {
   Loader2,
   Play,
   Plus,
+  Settings2,
   Trash2,
   Trophy,
   Users,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -34,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { useConfirm } from "@/components/confirm-dialog";
+import { useQuery } from "@tanstack/react-query";
 import {
   useRounds,
   useRoundStandings,
@@ -58,6 +61,7 @@ export default function AdminRoundsPage() {
   const [populateTarget, setPopulateTarget] = React.useState<Round | null>(null);
   const [closeTarget, setCloseTarget] = React.useState<Round | null>(null);
   const [standingsTarget, setStandingsTarget] = React.useState<Round | null>(null);
+  const [manageTarget, setManageTarget] = React.useState<Round | null>(null);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["rounds"] });
@@ -202,6 +206,13 @@ export default function AdminRoundsPage() {
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => setManageTarget(r)}
+                        >
+                          <Settings2 className="h-4 w-4" /> Kelola
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => setStandingsTarget(r)}
                         >
                           <Trophy className="h-4 w-4" /> Klasemen
@@ -263,6 +274,11 @@ export default function AdminRoundsPage() {
       <StandingsDialog
         round={standingsTarget}
         onClose={() => setStandingsTarget(null)}
+      />
+      <ManageDialog
+        round={manageTarget}
+        onClose={() => setManageTarget(null)}
+        onDone={invalidate}
       />
     </div>
   );
@@ -385,6 +401,10 @@ function CloseDialog({
 }) {
   const [topN, setTopN] = React.useState(1);
   const [busy, setBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    if (round) setTopN((round as Round & { top_n?: number }).top_n ?? 1);
+  }, [round]);
 
   async function submit() {
     if (!round) return;
@@ -514,6 +534,249 @@ function StandingsDialog({
             ))}
           </div>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type RoundSchoolRow = {
+  school_id: string;
+  school_name: string;
+  region_name: string;
+  status: "active" | "lolos" | "gugur";
+  points: number;
+  participants: number;
+};
+
+function ManageDialog({
+  round,
+  onClose,
+  onDone,
+}: {
+  round: (Round & { top_n?: number }) | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [name, setName] = React.useState("");
+  const [endsAt, setEndsAt] = React.useState("");
+  const [topN, setTopN] = React.useState(1);
+  const [addId, setAddId] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+
+  const { data: roundSchools, refetch } = useQuery({
+    queryKey: ["round-schools", round?.id],
+    enabled: !!round,
+    queryFn: () =>
+      api<RoundSchoolRow[]>(`/api/admin/rounds/${round!.id}/schools`),
+  });
+  const { data: allSchools } = useQuery({
+    queryKey: ["schools", "admin"],
+    enabled: !!round,
+    queryFn: () => api<{ id: string; name: string }[]>("/api/admin/schools"),
+  });
+
+  // Prefill saat round berganti.
+  React.useEffect(() => {
+    if (!round) return;
+    setName(round.name);
+    setTopN(round.top_n ?? 1);
+    setEndsAt(
+      round.ends_at
+        ? new Date(
+            new Date(round.ends_at).getTime() -
+              new Date().getTimezoneOffset() * 60000,
+          )
+            .toISOString()
+            .slice(0, 16)
+        : "",
+    );
+    setAddId("");
+  }, [round]);
+
+  const memberIds = new Set((roundSchools ?? []).map((r) => r.school_id));
+  const addable = (allSchools ?? []).filter((sc) => !memberIds.has(sc.id));
+  const closed = round?.status === "closed";
+
+  async function saveSettings() {
+    if (!round) return;
+    setBusy(true);
+    try {
+      await api(`/api/admin/rounds/${round.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: name.trim(),
+          top_n: topN,
+          ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+        }),
+      });
+      toast.success("Pengaturan disimpan.");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal menyimpan.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addSchool() {
+    if (!round || !addId) return;
+    try {
+      await api(`/api/admin/rounds/${round.id}/schools`, {
+        method: "POST",
+        body: JSON.stringify({ school_id: addId }),
+      });
+      setAddId("");
+      refetch();
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal menambah sekolah.");
+    }
+  }
+
+  async function removeSchool(schoolId: string) {
+    if (!round) return;
+    try {
+      await api(`/api/admin/rounds/${round.id}/schools/${schoolId}`, {
+        method: "DELETE",
+      });
+      refetch();
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal mengeluarkan.");
+    }
+  }
+
+  return (
+    <Dialog open={!!round} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Kelola — {round?.name}</DialogTitle>
+          <DialogDescription>
+            Jadwal, aturan lolos, dan sekolah peserta gelombang ini.
+            {closed && " Gelombang sudah ditutup — hanya bisa dilihat."}
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Pengaturan */}
+        <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Nama Gelombang</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={closed}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Lolos / kabupaten</Label>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={topN}
+                onChange={(e) => setTopN(Number(e.target.value) || 1)}
+                disabled={closed}
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Berakhir (countdown + auto-stop vote)</Label>
+              <Input
+                type="datetime-local"
+                value={endsAt}
+                onChange={(e) => setEndsAt(e.target.value)}
+                disabled={closed}
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                className="w-full"
+                onClick={saveSettings}
+                disabled={busy || closed}
+              >
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                Simpan Pengaturan
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Kosongkan &quot;Berakhir&quot; = tanpa batas waktu. Nilai
+            &quot;Lolos/kabupaten&quot; dipakai sebagai bawaan saat menutup
+            gelombang.
+          </p>
+        </div>
+
+        {/* Sekolah peserta */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold">
+              Sekolah Peserta ({roundSchools?.length ?? 0})
+            </p>
+            {!closed && (
+              <div className="flex gap-2">
+                <select
+                  className="select-ui h-8 w-56 pl-2 pr-8 text-xs"
+                  value={addId}
+                  onChange={(e) => setAddId(e.target.value)}
+                >
+                  <option value="">— tambah sekolah —</option>
+                  {addable.map((sc) => (
+                    <option key={sc.id} value={sc.id}>
+                      {sc.name}
+                    </option>
+                  ))}
+                </select>
+                <Button size="sm" onClick={addSchool} disabled={!addId}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+          {(roundSchools ?? []).length === 0 ? (
+            <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+              Belum ada sekolah — pakai &quot;Isi Sekolah&quot; untuk bulk,
+              atau tambah satuan di atas.
+            </p>
+          ) : (
+            <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
+              {(roundSchools ?? []).map((r) => (
+                <div
+                  key={r.school_id}
+                  className="flex items-center justify-between gap-2 rounded-lg border p-2.5 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 font-medium">
+                      <span className="truncate">{r.school_name}</span>
+                      {r.status === "lolos" && (
+                        <Badge variant="success">Lolos</Badge>
+                      )}
+                      {r.status === "gugur" && (
+                        <Badge variant="secondary">Gugur</Badge>
+                      )}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {r.region_name} · {r.participants} peserta ·{" "}
+                      {formatNumber(r.points)} poin
+                    </p>
+                  </div>
+                  {!closed && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 shrink-0 text-destructive"
+                      title="Keluarkan dari gelombang"
+                      onClick={() => removeSchool(r.school_id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

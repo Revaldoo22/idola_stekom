@@ -26,7 +26,8 @@ export class PublicService {
     return this.db.query(
       `select p.*,
               case when s.id is null then null
-                   else json_build_object('id', s.id, 'name', s.name) end as schools
+                   else json_build_object('id', s.id, 'name', s.name,
+                                          'region_id', s.region_id) end as schools
        from participants p
        left join schools s on s.id = p.school_id
        where ($1::uuid is null or p.school_id = $1)

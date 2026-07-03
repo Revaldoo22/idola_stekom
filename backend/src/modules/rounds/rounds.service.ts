@@ -45,10 +45,69 @@ export class RoundsService {
       order by r.created_at desc`);
   }
 
-  /** Atur jadwal berakhir (countdown + auto-tutup vote). */
-  async schedule(id: string, endsAt: string | null) {
-    await this.mustExist(id);
-    await this.rounds.update({ id }, { endsAt: endsAt ? new Date(endsAt) : null });
+  /** Edit pengaturan gelombang: nama, jadwal, aturan lolos. */
+  async updateSettings(
+    id: string,
+    dto: {
+      name?: string;
+      starts_at?: string | null;
+      ends_at?: string | null;
+      top_n?: number;
+    },
+  ) {
+    const round = await this.mustExist(id);
+    if (dto.name !== undefined) round.name = dto.name.trim();
+    if (dto.starts_at !== undefined)
+      round.startsAt = dto.starts_at ? new Date(dto.starts_at) : null;
+    if (dto.ends_at !== undefined)
+      round.endsAt = dto.ends_at ? new Date(dto.ends_at) : null;
+    if (dto.top_n !== undefined)
+      round.topN = Math.max(1, Math.min(dto.top_n, 100));
+    await this.rounds.save(round);
+    return { ok: true };
+  }
+
+  /** Daftar sekolah dalam round (nama, kabupaten, status, skor). */
+  roundSchoolList(id: string) {
+    return this.db.query(
+      `select rs.school_id, rs.status, s.name as school_name,
+              coalesce(rg.name, 'Tanpa Kabupaten') as region_name,
+              coalesce((
+                select sum(p.total_points) from participants p
+                where p.school_id = s.id and p.status = 'active'
+              ), 0)::int as points,
+              (select count(*) from participants p
+               where p.school_id = s.id and p.status = 'active')::int as participants
+       from round_schools rs
+       join schools s on s.id = rs.school_id
+       left join regions rg on rg.id = s.region_id
+       where rs.round_id = $1
+       order by region_name, points desc`,
+      [id],
+    );
+  }
+
+  /** Tambah satu sekolah ke round (idempotent). */
+  async addSchool(id: string, schoolId: string) {
+    const round = await this.mustExist(id);
+    if (round.status === "closed") {
+      throw new BadRequestException("Gelombang sudah ditutup.");
+    }
+    await this.db.query(
+      `insert into round_schools (round_id, school_id, status)
+       values ($1, $2, 'active') on conflict (round_id, school_id) do nothing`,
+      [id, schoolId],
+    );
+    return { ok: true };
+  }
+
+  /** Keluarkan sekolah dari round. */
+  async removeSchool(id: string, schoolId: string) {
+    const round = await this.mustExist(id);
+    if (round.status === "closed") {
+      throw new BadRequestException("Gelombang sudah ditutup.");
+    }
+    await this.roundSchools.delete({ roundId: id, schoolId });
     return { ok: true };
   }
 
@@ -152,12 +211,12 @@ export class RoundsService {
    * Tutup gelombang + promosi: top-N sekolah per kabupaten (by poin vote
    * round ini) berstatus 'lolos', sisanya 'gugur'.
    */
-  async close(id: string, topN: number) {
+  async close(id: string, topN?: number) {
     const round = await this.mustExist(id);
     if (round.status === "closed") {
       throw new BadRequestException("Gelombang sudah ditutup.");
     }
-    const n = Math.max(1, Math.min(topN || 1, 100));
+    const n = Math.max(1, Math.min(topN || round.topN || 1, 100));
 
     await this.db.transaction(async (em) => {
       // Ranking per kabupaten → set lolos/gugur sekali jalan.

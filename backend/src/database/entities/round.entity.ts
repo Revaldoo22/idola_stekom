@@ -21,6 +21,10 @@ export class Round {
   @Column({ type: "text", default: "draft" })
   status!: RoundStatus;
 
+  /** Default jumlah sekolah lolos per kabupaten saat gelombang ditutup. */
+  @Column({ name: "top_n", type: "int", default: 1 })
+  topN!: number;
+
   @Column({ name: "starts_at", type: "timestamptz", nullable: true })
   startsAt!: Date | null;
 
