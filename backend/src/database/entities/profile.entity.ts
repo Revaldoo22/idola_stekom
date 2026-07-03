@@ -58,6 +58,10 @@ export class Profile {
   @Column({ name: "college_intent", type: "text", nullable: true })
   collegeIntent!: CollegeIntent | null;
 
+  /** Waktu voter mengonfirmasi follow akun Univ STEKOM (sekali seumur event). */
+  @Column({ name: "followed_at", type: "timestamptz", nullable: true })
+  followedAt!: Date | null;
+
   /** True once the onboarding wizard has been completed. */
   @Column({ type: "boolean", default: false })
   onboarded!: boolean;

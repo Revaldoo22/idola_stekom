@@ -49,6 +49,7 @@ export type MyProfile = {
   region: string | null;
   college_intent: "ya" | "tidak" | "ragu" | null;
   onboarded: boolean;
+  followed: boolean;
 };
 
 export function useMyProfile() {
@@ -697,5 +698,20 @@ export function usePmbInsight() {
   return useQuery({
     queryKey: ["pmb-insight"],
     queryFn: () => api<PmbInsight>("/api/admin/pmb-insight"),
+  });
+}
+
+export type CouponRow = {
+  code: string;
+  source: string;
+  created_at: string;
+  owner_name: string | null;
+};
+
+export function useMyCoupons(enabled: boolean) {
+  return useQuery({
+    queryKey: ["my-coupons"],
+    enabled,
+    queryFn: () => api<CouponRow[]>("/api/voter/coupons"),
   });
 }

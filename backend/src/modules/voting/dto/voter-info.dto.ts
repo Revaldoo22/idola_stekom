@@ -55,6 +55,10 @@ export class CastVoteDto extends VoterInfoDto {
   @IsOptional()
   @IsIn(["daily5", "fav20"])
   kind?: "daily5" | "fav20";
+
+  /** Voter menyatakan sudah follow akun Univ STEKOM (gate vote pertama). */
+  @IsOptional()
+  follow_confirmed?: boolean;
 }
 
 export class CreateSubmissionDto extends VoterInfoDto {

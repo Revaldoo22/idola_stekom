@@ -10,6 +10,7 @@ import {
   LogIn,
   LogOut,
   Settings,
+  Ticket,
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -92,11 +93,18 @@ export function AuthNav() {
           </DropdownMenuItem>
         )}
         {profile.role === "voter" && profile.onboarded && (
-          <DropdownMenuItem asChild>
-            <Link href="/akun" className="gap-2">
-              <Settings className="h-4 w-4" /> Pengaturan Akun
-            </Link>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/kupon" className="gap-2">
+                <Ticket className="h-4 w-4" /> Kupon Saya
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/akun" className="gap-2">
+                <Settings className="h-4 w-4" /> Pengaturan Akun
+              </Link>
+            </DropdownMenuItem>
+          </>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem

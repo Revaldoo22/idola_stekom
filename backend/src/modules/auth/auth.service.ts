@@ -133,6 +133,7 @@ export class AuthService {
         : null,
       college_intent: user.collegeIntent,
       onboarded: user.onboarded,
+      followed: !!user.followedAt,
     };
   }
 

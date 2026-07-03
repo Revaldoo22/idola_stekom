@@ -26,6 +26,7 @@ const MESSAGES: Record<string, [string, number]> = {
     409,
   ],
   ALREADYVOTED: ["Kamu sudah vote peserta ini hari ini.", 409],
+  FOLLOW_REQUIRED: ["Follow akun Universitas STEKOM dulu untuk vote pertamamu.", 409],
   FAV_LIMIT: ["Kuota vote favorit harianmu sudah habis (maks 10 peserta).", 409],
   IPLIMIT: ["Batas vote harian dari jaringan ini tercapai.", 409],
   MISSINGDATA: ["Data tidak lengkap.", 400],

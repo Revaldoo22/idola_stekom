@@ -29,6 +29,18 @@ export class VoterSelfController {
     return { votes: rows, fav_quota: { used: favUsed, max: 10 } };
   }
 
+  /** Kupon undian milik voter (dari follow). */
+  @Get("coupons")
+  coupons(@CurrentUser() user: JwtPayload) {
+    return this.db.query(
+      `select c.code, c.source, c.created_at, pr.name as owner_name
+       from coupons c join profiles pr on pr.id = c.profile_id
+       where c.profile_id = $1
+       order by c.created_at desc`,
+      [user.sub],
+    );
+  }
+
   /**
    * Peringkat sekolah si voter: global & di dalam kabupatennya.
    * Skor sekolah = jumlah total_points peserta aktifnya.

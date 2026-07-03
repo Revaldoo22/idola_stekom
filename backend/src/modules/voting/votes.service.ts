@@ -1,7 +1,7 @@
 import { ConflictException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
-import { DailyVote, Participant } from "../../database/entities";
+import { Coupon, DailyVote, Participant, Profile } from "../../database/entities";
 import { SettingsService } from "../settings/settings.service";
 import { RoundsService } from "../rounds/rounds.service";
 import { AntiCheatService } from "./anti-cheat.service";
@@ -92,6 +92,17 @@ export class VotesService {
       if (Number(cnt?.c ?? 0) >= limit) throw new VoteError("IPLIMIT");
     }
 
+    // Gate follow (harian): voter ber-akun wajib pernah konfirmasi follow
+    // akun Univ STEKOM - cukup SEKALI seumur event, lintas peserta.
+    const profile = await this.dataSource
+      .getRepository(Profile)
+      .findOneBy({ phoneNumber: phone, role: "voter" });
+    let grantCoupon = false;
+    if (kind === "daily5" && profile && !profile.followedAt) {
+      if (!d.follow_confirmed) throw new VoteError("FOLLOW_REQUIRED");
+      grantCoupon = true; // follow pertama + vote sukses = kupon undian
+    }
+
     // Stempel gelombang aktif (null bila tidak ada round berjalan).
     const activeRound = await this.rounds.active();
     // Periode gelombang habis → vote ditolak sampai panitia menutup/mengganti.
@@ -121,6 +132,26 @@ export class VotesService {
         await em
           .getRepository(Participant)
           .increment({ id: d.participant_id }, "totalPoints", points);
+
+        // Follow terkonfirmasi: catat + terbitkan kupon undian (sekali).
+        if (grantCoupon && profile) {
+          await em
+            .getRepository(Profile)
+            .update({ id: profile.id }, { followedAt: new Date() });
+          const code =
+            "YCS-" +
+            Array.from({ length: 2 }, () =>
+              Math.random().toString(36).slice(2, 6).toUpperCase(),
+            ).join("-");
+          await em
+            .getRepository(Coupon)
+            .createQueryBuilder()
+            .insert()
+            .values({ profileId: profile.id, code, source: "follow" })
+            .orIgnore() // unique (profile, source): idempoten saat race
+            .execute();
+        }
+
         return em.getRepository(Participant).findOneBy({ id: d.participant_id });
       });
     } catch (err) {

@@ -86,6 +86,7 @@ export default function PublicParticipantPage({
   // Voter yang sudah login + lengkapi wizard: identitas dari profil,
   // tidak perlu isi form lagi di tiap vote/quest.
   const locked = !!me && me.role === "voter" && me.onboarded;
+  const followed = !!me?.followed;
   const voter: VoterCtx = locked
     ? {
         ...anonVoter,
@@ -187,6 +188,7 @@ export default function PublicParticipantPage({
                     participantName={participant.name}
                     voter={voter}
                     locked={locked}
+                    followed={followed}
                     gate={gate}
                     disabled={eventClosed}
                     onVoted={() => refetch()}
@@ -197,6 +199,7 @@ export default function PublicParticipantPage({
                     participantName={participant.name}
                     voter={voter}
                     locked={locked}
+                    followed={followed}
                     gate={gate}
                     disabled={eventClosed}
                     onVoted={() => refetch()}
@@ -281,6 +284,7 @@ function VoteDialog({
   participantName,
   voter,
   locked,
+  followed,
   gate,
   disabled,
   onVoted,
@@ -291,13 +295,17 @@ function VoteDialog({
   voter: VoterCtx;
   /** Voter login + onboarded: identitas dari profil, tanpa form/konfirmasi. */
   locked: boolean;
+  /** Sudah pernah konfirmasi follow akun STEKOM (sekali seumur event). */
+  followed: boolean;
   /** Belum boleh vote (belum login / belum wizard / bukan voter). */
   gate: (() => void) | null;
   disabled: boolean;
   onVoted: () => void;
 }) {
   const [open, setOpen] = React.useState(false);
+  const [showFollow, setShowFollow] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const qc = useQueryClient();
   const confirm = useConfirm();
   const isFav = kind === "fav20";
   const pts = isFav ? 20 : 5;
@@ -309,6 +317,11 @@ function VoteDialog({
       return;
     }
     if (locked) {
+      // Vote harian pertama: wajib follow akun Univ STEKOM dulu (sekali).
+      if (kind === "daily5" && !followed) {
+        setShowFollow(true);
+        return;
+      }
       void doSubmit();
       return;
     }
@@ -320,7 +333,7 @@ function VoteDialog({
     });
   }
 
-  async function doSubmit() {
+  async function doSubmit(followConfirmed = false) {
     setBusy(true);
     try {
       const fingerprint = await getFingerprint();
@@ -332,6 +345,7 @@ function VoteDialog({
           participant_id: participantId,
           fingerprint,
           kind,
+          ...(followConfirmed ? { follow_confirmed: true } : {}),
         }),
       });
       const data = await res.json();
@@ -340,8 +354,15 @@ function VoteDialog({
         return;
       }
       voter.persist(voter.data);
-      toast.success(`+${pts} terkirim untuk ${participantName}`);
+      if (followConfirmed) {
+        toast.success("Vote terkirim. Kupon undian handphone masuk ke akunmu!");
+        qc.invalidateQueries({ queryKey: ["profile", "me"] });
+        qc.invalidateQueries({ queryKey: ["my-coupons"] });
+      } else {
+        toast.success(`+${pts} terkirim untuk ${participantName}`);
+      }
       setOpen(false);
+      setShowFollow(false);
       onVoted();
     } finally {
       setBusy(false);
@@ -363,9 +384,46 @@ function VoteDialog({
     );
   }
 
-  // Sudah login: satu klik langsung vote — tanpa dialog isi data.
+  // Sudah login: satu klik langsung vote, tanpa dialog isi data.
   if (locked) {
     return (
+      <>
+      <Dialog open={showFollow} onOpenChange={setShowFollow}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Follow dulu, dapat kupon undian</DialogTitle>
+            <DialogDescription>
+              Sekali saja untuk seluruh event. Follow akun Universitas STEKOM,
+              lalu kirim vote pertamamu dan dapatkan kupon undian berhadiah
+              handphone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button variant="outline" asChild>
+              <a
+                href="https://www.instagram.com/universitasstekom"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Instagram STEKOM
+              </a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a
+                href="https://www.tiktok.com/@stekomuniversity"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                TikTok STEKOM
+              </a>
+            </Button>
+          </div>
+          <Button onClick={() => doSubmit(true)} disabled={busy}>
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+            Sudah follow, kirim vote (+{pts})
+          </Button>
+        </DialogContent>
+      </Dialog>
       <Button
         className="w-full"
         variant={isFav ? "accent" : "default"}
@@ -381,6 +439,7 @@ function VoteDialog({
         )}
         {disabled ? "Event ditutup" : isFav ? "Favorit (+20)" : "Dukung (+5)"}
       </Button>
+      </>
     );
   }
 
