@@ -15,6 +15,7 @@ import { ParticipantSelfModule } from "./modules/participant-self/participant-se
 import { UploadsModule } from "./modules/uploads/uploads.module";
 import { RoundsModule } from "./modules/rounds/rounds.module";
 import { RegionsModule } from "./modules/regions/regions.module";
+import { IntegrationsModule } from "./modules/integrations/integrations.module";
 import { HealthModule } from "./modules/health/health.module";
 
 @Module({
@@ -34,6 +35,7 @@ import { HealthModule } from "./modules/health/health.module";
     UploadsModule,
     RoundsModule,
     RegionsModule,
+    IntegrationsModule,
     HealthModule,
   ],
 })

@@ -9,7 +9,31 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+} from "class-validator";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { ParticipantContent } from "../../database/entities";
+import { NotFoundException } from "@nestjs/common";
 import { ParticipantsService } from "./participants.service";
+
+class AdminContentDto {
+  @IsIn(["engage", "sound"])
+  kind!: "engage" | "sound";
+
+  @IsUrl({}, { message: "Link tidak valid" })
+  url!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  label?: string;
+}
 import {
   CreateParticipantDto,
   UpdateParticipantDto,
@@ -23,7 +47,11 @@ import { Roles } from "../../common/decorators/roles.decorator";
 @UseGuards(JwtGuard, RolesGuard)
 @Roles("admin")
 export class ParticipantsController {
-  constructor(private readonly participants: ParticipantsService) {}
+  constructor(
+    private readonly participants: ParticipantsService,
+    @InjectRepository(ParticipantContent)
+    private readonly contents: Repository<ParticipantContent>,
+  ) {}
 
   @Get()
   list() {
@@ -46,5 +74,39 @@ export class ParticipantsController {
   @Delete(":id")
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.participants.remove(id);
+  }
+
+  // ---- Konten peserta (fallback admin; sumber utama = app kedua) ----
+  @Get(":id/contents")
+  listContents(@Param("id", ParseUUIDPipe) id: string) {
+    return this.contents.find({
+      where: { participantId: id },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  @Post(":id/contents")
+  addContent(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: AdminContentDto,
+  ) {
+    return this.contents.save(
+      this.contents.create({
+        participantId: id,
+        kind: dto.kind,
+        url: dto.url.trim(),
+        label: dto.label?.trim() || null,
+      }),
+    );
+  }
+
+  @Delete(":id/contents/:contentId")
+  async removeContent(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("contentId", ParseUUIDPipe) contentId: string,
+  ) {
+    const res = await this.contents.delete({ id: contentId, participantId: id });
+    if (!res.affected) throw new NotFoundException("Konten tidak ditemukan.");
+    return { ok: true };
   }
 }

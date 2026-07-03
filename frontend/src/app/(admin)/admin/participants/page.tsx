@@ -7,14 +7,16 @@ import {
   Copy,
   Download,
   KeyRound,
+  Link2,
   Loader2,
   Pencil,
   Plus,
   Trash2,
   UserPlus,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,6 +67,7 @@ export default function AdminParticipantsPage() {
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<ParticipantWithSchool | null>(null);
   const [detail, setDetail] = React.useState<ParticipantWithSchool | null>(null);
+  const [contentsTarget, setContentsTarget] = React.useState<ParticipantWithSchool | null>(null);
   const [creds, setCreds] = React.useState<{
     name: string;
     phone_number?: string;
@@ -439,6 +442,14 @@ export default function AdminParticipantsPage() {
                         <Button
                           size="icon"
                           variant="ghost"
+                          title="Konten quest (link IG/TikTok)"
+                          onClick={() => setContentsTarget(p)}
+                        >
+                          <Link2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
                           title="Atur password"
                           onClick={() => openPassword(p)}
                         >
@@ -612,6 +623,11 @@ export default function AdminParticipantsPage() {
       <ParticipantDetailDialog
         participant={detail}
         onClose={() => setDetail(null)}
+      />
+
+      <ContentsDialog
+        participant={contentsTarget}
+        onClose={() => setContentsTarget(null)}
       />
 
       {/* Set / change password */}
@@ -848,6 +864,133 @@ function ParticipantDetailDialog({
             </div>
           </>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Fallback admin untuk konten quest peserta (sumber utama: app kedua). */
+function ContentsDialog({
+  participant,
+  onClose,
+}: {
+  participant: ParticipantWithSchool | null;
+  onClose: () => void;
+}) {
+  const [kind, setKind] = React.useState<"engage" | "sound">("engage");
+  const [url, setUrl] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+
+  const { data: contents, refetch } = useQuery({
+    queryKey: ["admin-contents", participant?.id],
+    enabled: !!participant,
+    queryFn: () =>
+      api<{ id: string; kind: string; url: string }[]>(
+        "/api/admin/participants/" + participant!.id + "/contents",
+      ),
+  });
+
+  async function add() {
+    if (!participant) return;
+    if (!/^https?:\/\/.+/i.test(url.trim())) {
+      return void toast.error("Masukkan link valid (mulai http).");
+    }
+    setBusy(true);
+    try {
+      await api("/api/admin/participants/" + participant.id + "/contents", {
+        method: "POST",
+        body: JSON.stringify({ kind, url: url.trim() }),
+      });
+      setUrl("");
+      refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal menambah konten.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(id: string) {
+    if (!participant) return;
+    try {
+      await api(
+        "/api/admin/participants/" + participant.id + "/contents/" + id,
+        { method: "DELETE" },
+      );
+      refetch();
+    } catch {
+      toast.error("Gagal menghapus.");
+    }
+  }
+
+  return (
+    <Dialog open={!!participant} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Konten Quest: {participant?.name}</DialogTitle>
+          <DialogDescription>
+            Link konten (IG/TikTok) yang dipakai quest jenis engage/sound.
+            Biasanya disinkron dari aplikasi pendaftaran; ini cadangan manual.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <select
+              className="select-ui w-36"
+              value={kind}
+              onChange={(e) => setKind(e.target.value as "engage" | "sound")}
+            >
+              <option value="engage">Engage</option>
+              <option value="sound">Sound</option>
+            </select>
+            <Input
+              placeholder="https://www.instagram.com/p/..."
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+            <Button onClick={add} disabled={busy}>
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          {(contents ?? []).length === 0 ? (
+            <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+              Belum ada konten.
+            </p>
+          ) : (
+            <ul className="max-h-64 space-y-1.5 overflow-y-auto">
+              {(contents ?? []).map((c) => (
+                <li
+                  key={c.id}
+                  className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                >
+                  <Badge variant={c.kind === "sound" ? "accent" : "secondary"}>
+                    {c.kind}
+                  </Badge>
+                  <a
+                    href={c.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="min-w-0 flex-1 truncate text-primary hover:underline"
+                  >
+                    {c.url}
+                  </a>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0 text-destructive"
+                    onClick={() => remove(c.id)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
