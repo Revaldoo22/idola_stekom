@@ -28,4 +28,39 @@ export class VoterSelfController {
     ).size;
     return { votes: rows, fav_quota: { used: favUsed, max: 10 } };
   }
+
+  /**
+   * Peringkat sekolah si voter: global & di dalam kabupatennya.
+   * Skor sekolah = jumlah total_points peserta aktifnya.
+   */
+  @Get("school-rank")
+  async schoolRank(@CurrentUser() user: JwtPayload) {
+    const rows = await this.db.query(
+      `with scores as (
+         select s.id, s.name, s.region_id,
+                coalesce(rg.name, 'Tanpa Kabupaten') as region_name,
+                coalesce((
+                  select sum(p.total_points) from participants p
+                  where p.school_id = s.id and p.status = 'active'
+                ), 0) as points
+         from schools s
+         left join regions rg on rg.id = s.region_id
+       ),
+       ranked as (
+         select *,
+                rank() over (order by points desc)::int as global_rank,
+                rank() over (partition by region_id order by points desc)::int as region_rank,
+                count(*) over ()::int as global_total,
+                count(*) over (partition by region_id)::int as region_total
+         from scores
+       )
+       select r.name as school_name, r.region_name, r.points::int,
+              r.global_rank, r.global_total, r.region_rank, r.region_total
+       from ranked r
+       join profiles pr on pr.school_id = r.id
+       where pr.id = $1`,
+      [user.sub],
+    );
+    return rows[0] ?? null;
+  }
 }

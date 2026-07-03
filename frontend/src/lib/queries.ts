@@ -641,3 +641,21 @@ export function useVoterToday(enabled: boolean) {
     queryFn: () => api<VoterToday>("/api/voter/today"),
   });
 }
+
+export type MySchoolRank = {
+  school_name: string;
+  region_name: string;
+  points: number;
+  global_rank: number;
+  global_total: number;
+  region_rank: number;
+  region_total: number;
+};
+
+export function useMySchoolRank(enabled: boolean) {
+  return useQuery({
+    queryKey: ["my-school-rank"],
+    enabled,
+    queryFn: () => api<MySchoolRank | null>("/api/voter/school-rank"),
+  });
+}
