@@ -114,7 +114,10 @@ export default function AdminLogPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Log Aktivitas</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Log <span className="text-gradient">Aktivitas</span></h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">Semua vote &amp; submission yang masuk, real-time.</p>
+        </div>
         <p className="text-sm text-muted-foreground">
           {formatNumber(totalCount)} aktivitas (vote, favorit, quest).
         </p>

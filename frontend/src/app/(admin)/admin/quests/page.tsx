@@ -190,7 +190,10 @@ export default function AdminQuestsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Kelola Quest</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Kelola <span className="text-gradient">Quest</span></h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">Atur quest, poin, dan frekuensinya.</p>
+        </div>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4" /> Tambah Quest
         </Button>
@@ -217,7 +220,7 @@ export default function AdminQuestsPage() {
           }
         />
       ) : (
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="p-0">
             <Table>
               <TableHeader>

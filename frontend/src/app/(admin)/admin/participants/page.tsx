@@ -330,7 +330,10 @@ export default function AdminParticipantsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Kelola Peserta</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Kelola <span className="text-gradient">Peserta</span></h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">Tambah, edit, dan kelola akun login peserta.</p>
+        </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -375,7 +378,7 @@ export default function AdminParticipantsPage() {
       ) : paged.length === 0 ? (
         <EmptyState title="Tidak ada peserta cocok pencarian" />
       ) : (
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="p-0">
             <Table>
               <TableHeader>

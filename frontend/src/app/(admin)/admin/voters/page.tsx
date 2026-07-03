@@ -138,7 +138,10 @@ export default function AdminVotersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Daftar Voter</h1>
+          <div>
+          <h1 className="text-2xl font-bold tracking-tight">Daftar <span className="text-gradient">Voter</span></h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">Rekap pendukung beserta vote &amp; quest-nya.</p>
+        </div>
           <p className="text-sm text-muted-foreground">
             Total {formatNumber(totalCount)} voter. Klik baris untuk lihat
             distribusi poin.

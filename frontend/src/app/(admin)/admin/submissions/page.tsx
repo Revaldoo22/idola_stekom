@@ -118,7 +118,10 @@ export default function AdminSubmissionsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-bold">Verifikasi Submission Quest</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Verifikasi <span className="text-gradient">Submission</span></h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">Setujui atau tolak bukti quest dari pendukung.</p>
+        </div>
         {counts && (
           <p className="text-sm text-muted-foreground">
             Sisa pending: <span className="font-semibold text-foreground">{counts.pending}</span>
