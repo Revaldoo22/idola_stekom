@@ -296,7 +296,14 @@ function LiveDraw({
   const [ticker, setTicker] = React.useState<string>("");
   const [winner, setWinner] = React.useState<Winner | null>(null);
   const alive = React.useRef(true);
-  React.useEffect(() => () => void (alive.current = false), []);
+  // StrictMode dev menjalankan mount-cleanup-mount: cleanup mematikan flag,
+  // jadi WAJIB dinyalakan lagi di body effect.
+  React.useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   // Prefetch kandidat begitu panggung dibuka: shuffle mulai tanpa jeda.
   const poolRef = React.useRef<{ name: string; code: string }[]>([]);
