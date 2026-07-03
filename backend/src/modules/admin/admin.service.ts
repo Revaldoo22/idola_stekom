@@ -112,9 +112,10 @@ export class AdminService {
       from v full outer join q on q.voter_phone = v.voter_phone
     ),
     enriched as (
-      select c.*, pr.region, pr.college_intent
+      select c.*, rgn.name as region, pr.college_intent
       from combined c
       left join profiles pr on pr.phone_number = c.voter_phone
+      left join regions rgn on rgn.id = pr.region_id
     ),
     filtered as (
       select * from enriched

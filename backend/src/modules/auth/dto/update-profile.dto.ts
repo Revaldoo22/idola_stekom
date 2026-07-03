@@ -41,9 +41,8 @@ export class UpdateProfileDto {
   status?: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(150)
-  region?: string;
+  @IsUUID(undefined, { message: "Pilih kabupaten" })
+  region_id?: string;
 
   @IsOptional()
   @IsIn(["ya", "tidak", "ragu"], { message: "Pilih niat kuliah" })

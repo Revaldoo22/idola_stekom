@@ -45,6 +45,7 @@ export type MyProfile = {
   school: string | null;
   class: string | null;
   status: string | null;
+  region_id: string | null;
   region: string | null;
   college_intent: "ya" | "tidak" | "ragu" | null;
   onboarded: boolean;

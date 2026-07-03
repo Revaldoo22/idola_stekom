@@ -124,7 +124,13 @@ export class AuthService {
       school_id: user.schoolId,
       class: user.voterClass,
       status: user.voterStatus,
-      region: user.region,
+      region_id: user.regionId,
+      region: user.regionId
+        ? ((await this.profiles.manager.query(
+            `select name from regions where id = $1`,
+            [user.regionId],
+          )) as { name: string }[])[0]?.name ?? null
+        : null,
       college_intent: user.collegeIntent,
       onboarded: user.onboarded,
     };
@@ -144,7 +150,7 @@ export class AuthService {
       school_name?: string;
       class?: string;
       status?: string;
-      region?: string;
+      region_id?: string;
       college_intent?: "ya" | "tidak" | "ragu";
     },
   ) {
@@ -170,7 +176,7 @@ export class AuthService {
     if (dto.password) user.passwordHash = hashPassword(dto.password);
     if (dto.class !== undefined) user.voterClass = dto.class || null;
     if (dto.status !== undefined) user.voterStatus = dto.status || null;
-    if (dto.region !== undefined) user.region = dto.region.trim() || null;
+    if (dto.region_id !== undefined) user.regionId = dto.region_id || null;
     if (dto.college_intent !== undefined)
       user.collegeIntent = dto.college_intent;
     await this.profiles.save(user);
@@ -219,7 +225,7 @@ export class AuthService {
     user.schoolId = schoolId;
     user.voterClass = dto.class;
     user.voterStatus = dto.status;
-    user.region = dto.region.trim();
+    user.regionId = dto.region_id;
     user.collegeIntent = dto.college_intent;
     user.onboarded = true;
     await this.profiles.save(user);

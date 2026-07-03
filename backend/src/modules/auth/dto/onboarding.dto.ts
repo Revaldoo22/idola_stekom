@@ -43,10 +43,8 @@ export class OnboardingDto {
   })
   status!: string;
 
-  @IsString()
-  @MinLength(2, { message: "Isi daerah asal" })
-  @MaxLength(150)
-  region!: string;
+  @IsUUID(undefined, { message: "Pilih kabupaten" })
+  region_id!: string;
 
   @IsIn(["ya", "tidak", "ragu"], { message: "Pilih niat kuliah" })
   college_intent!: "ya" | "tidak" | "ragu";

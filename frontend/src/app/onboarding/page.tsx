@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api-client";
+import { useRegions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { School } from "@/types/database";
 
@@ -50,6 +51,7 @@ const INTENT_OPTIONS = [
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { data: regions } = useRegions();
   const [me, setMe] = React.useState<Me | null>(null);
   const [schools, setSchools] = React.useState<School[]>([]);
   const [step, setStep] = React.useState(0);
@@ -102,7 +104,7 @@ export default function OnboardingPage() {
       if (!status) return "Pilih statusmu.";
     }
     if (s === 2) {
-      if (region.trim().length < 2) return "Isi daerah asalmu.";
+      if (!region) return "Pilih kabupaten asalmu.";
       if (!intent) return "Pilih niat kuliahmu.";
     }
     return null;
@@ -131,7 +133,7 @@ export default function OnboardingPage() {
           ...(match ? { school_id: match.id } : { school_name: schoolText.trim() }),
           class: kelas,
           status,
-          region: region.trim(),
+          region_id: region,
           college_intent: intent,
         }),
       });
@@ -306,12 +308,19 @@ export default function OnboardingPage() {
           {step === 2 && (
             <>
               <div className="space-y-1.5">
-                <Label>Daerah / Kota Asal</Label>
-                <Input
+                <Label>Kabupaten / Kota Asal</Label>
+                <select
+                  className="select-ui"
                   value={region}
                   onChange={(e) => setRegion(e.target.value)}
-                  placeholder="mis. Semarang"
-                />
+                >
+                  <option value="">— pilih kabupaten —</option>
+                  {(regions ?? []).map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-1.5">
                 <Label>Apakah kamu berniat melanjutkan kuliah?</Label>

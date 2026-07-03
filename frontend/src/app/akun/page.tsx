@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api-client";
-import { useMyProfile, useSchools } from "@/lib/queries";
+import { useMyProfile, useRegions, useSchools } from "@/lib/queries";
 
 const STATUS_OPTIONS = [
   { value: "teman_sekolah", label: "Teman sekolah peserta" },
@@ -27,6 +27,7 @@ export default function AccountPage() {
   const qc = useQueryClient();
   const { data: me, isLoading } = useMyProfile();
   const { data: schools } = useSchools();
+  const { data: regions } = useRegions();
 
   const [name, setName] = React.useState("");
   const [schoolText, setSchoolText] = React.useState("");
@@ -55,7 +56,7 @@ export default function AccountPage() {
       setSchoolText(me.school ?? "");
       setKelas(me.class ?? "");
       setStatus(me.status ?? "");
-      setRegion(me.region ?? "");
+      setRegion(me.region_id ?? "");
       setIntent(me.college_intent ?? "");
       setReady(true);
     }
@@ -82,7 +83,7 @@ export default function AccountPage() {
             : { school_name: schoolText.trim() }),
           class: kelas || undefined,
           status: status || undefined,
-          region: region.trim() || undefined,
+          region_id: region || undefined,
           college_intent: intent || undefined,
         }),
       });
@@ -202,11 +203,19 @@ export default function AccountPage() {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Daerah / Kota</Label>
-                <Input
+                <Label>Kabupaten / Kota</Label>
+                <select
+                  className="select-ui"
                   value={region}
                   onChange={(e) => setRegion(e.target.value)}
-                />
+                >
+                  <option value="">— pilih —</option>
+                  {(regions ?? []).map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-1.5">
                 <Label>Niat Kuliah</Label>

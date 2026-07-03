@@ -50,9 +50,9 @@ export class Profile {
   @Column({ name: "voter_status", type: "text", nullable: true })
   voterStatus!: string | null;
 
-  /** Daerah/kota asal. */
-  @Column({ type: "text", nullable: true })
-  region!: string | null;
+  /** Kabupaten/kota asal — FK ke regions (sinkron dgn data admin). */
+  @Column({ name: "region_id", type: "uuid", nullable: true })
+  regionId!: string | null;
 
   /** Niat melanjutkan kuliah: ya | tidak | ragu. */
   @Column({ name: "college_intent", type: "text", nullable: true })
