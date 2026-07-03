@@ -1,7 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {
   BarChart3,
+  Flame,
   GraduationCap,
   MapPin,
   School,
@@ -29,6 +31,12 @@ import {
 } from "@/lib/queries";
 import { formatNumber } from "@/lib/utils";
 import { EventToggle } from "@/components/event-toggle";
+
+// Leaflet menyentuh window — client-only.
+const HeatmapMap = dynamic(() => import("@/components/heatmap-map"), {
+  ssr: false,
+  loading: () => <LoadingState />,
+});
 import { cn } from "@/lib/utils";
 
 type Tone = "indigo" | "violet" | "sky" | "emerald" | "amber";
@@ -218,6 +226,15 @@ export default function AdminDashboard() {
           ) : (
             <EmptyState title="Belum ada data" />
           )}
+        </ChartCard>
+
+        <ChartCard
+          icon={Flame}
+          title="Heatmap Kabupaten"
+          desc="Persaingan poin antar kabupaten (Jawa Tengah)"
+          className="lg:col-span-2"
+        >
+          <HeatmapMap />
         </ChartCard>
 
         <ChartCard

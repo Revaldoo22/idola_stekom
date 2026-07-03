@@ -48,6 +48,7 @@ export default function PublicRoundsPage() {
       <Navbar
         links={[
           { href: "/ranking", label: "Ranking" },
+          { href: "/peringkat-sekolah", label: "Peringkat Sekolah" },
           { href: "/heatmap", label: "Heatmap" },
           { href: "/gelombang", label: "Gelombang" },
         ]}

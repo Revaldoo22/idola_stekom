@@ -63,6 +63,7 @@ export default function SchoolPage({
       <Navbar
         links={[
           { href: "/ranking", label: "Ranking" },
+          { href: "/peringkat-sekolah", label: "Peringkat Sekolah" },
           { href: "/heatmap", label: "Heatmap" },
           { href: "/gelombang", label: "Gelombang" },
         ]}
@@ -70,7 +71,7 @@ export default function SchoolPage({
 
       <main className="container max-w-3xl space-y-6 py-8">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/heatmap">
+          <Link href="/peringkat-sekolah">
             <ArrowLeft className="h-4 w-4" /> Kembali ke Peringkat
           </Link>
         </Button>

@@ -17,6 +17,7 @@ export default function HomePage() {
       <Navbar
         links={[
           { href: "/ranking", label: "Ranking" },
+          { href: "/peringkat-sekolah", label: "Peringkat Sekolah" },
           { href: "/heatmap", label: "Heatmap" },
           { href: "/gelombang", label: "Gelombang" },
           { href: "/top-voter", label: "Top Voter" },
