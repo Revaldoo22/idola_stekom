@@ -45,6 +45,13 @@ export class RoundsService {
       order by r.created_at desc`);
   }
 
+  /** Atur jadwal berakhir (countdown + auto-tutup vote). */
+  async schedule(id: string, endsAt: string | null) {
+    await this.mustExist(id);
+    await this.rounds.update({ id }, { endsAt: endsAt ? new Date(endsAt) : null });
+    return { ok: true };
+  }
+
   create(name: string) {
     return this.rounds.save(this.rounds.create({ name: name.trim() }));
   }

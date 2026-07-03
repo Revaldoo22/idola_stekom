@@ -20,6 +20,9 @@ import { ENTITIES } from "./entities";
         database: config.get<string>("db.name"),
         entities: ENTITIES,
         synchronize: config.get<boolean>("db.sync"),
+        // Hari voting mengikuti WIB, bukan zona server — CURRENT_DATE,
+        // vote_date, dan submit_date semuanya bergantung ini.
+        extra: { options: "-c timezone=Asia/Jakarta" },
       }),
     }),
   ],

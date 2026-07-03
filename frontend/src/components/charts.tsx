@@ -6,8 +6,11 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -133,6 +136,75 @@ export function TopParticipantsChart({
         />
         <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v} poin`, "Total"]} />
         <Bar dataKey="total_points" fill="hsl(243 75% 59%)" radius={[0, 4, 4, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+const INTENT_META: Record<string, { label: string; color: string }> = {
+  ya: { label: "Ya, mau kuliah", color: "hsl(152 69% 40%)" },
+  ragu: { label: "Masih ragu", color: "hsl(38 92% 50%)" },
+  tidak: { label: "Tidak", color: "hsl(0 72% 51%)" },
+  belum_isi: { label: "Belum isi", color: "hsl(220 9% 65%)" },
+};
+
+export function IntentPieChart({
+  data,
+}: {
+  data: { intent: string; count: number }[];
+}) {
+  const rows = data.map((d) => ({
+    ...d,
+    name: INTENT_META[d.intent]?.label ?? d.intent,
+    color: INTENT_META[d.intent]?.color ?? "hsl(243 75% 59%)",
+  }));
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <PieChart>
+        <Pie
+          data={rows}
+          dataKey="count"
+          nameKey="name"
+          innerRadius={55}
+          outerRadius={90}
+          paddingAngle={3}
+          strokeWidth={0}
+          label={(e) => `${e.name ?? ""} (${(e as { count?: number }).count ?? 0})`}
+          fontSize={12}
+        >
+          {rows.map((r, i) => (
+            <Cell key={i} fill={r.color} />
+          ))}
+        </Pie>
+        <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v} voter`, ""]} />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function RegionBarChart({
+  data,
+}: {
+  data: { region: string; count: number }[];
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 0, right: 20, left: 10, bottom: 0 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+        <XAxis type="number" fontSize={12} allowDecimals={false} />
+        <YAxis
+          type="category"
+          dataKey="region"
+          fontSize={11}
+          width={120}
+          tickFormatter={(n: string) => (n.length > 16 ? n.slice(0, 15) + "…" : n)}
+        />
+        <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v} voter`, ""]} />
+        <Bar dataKey="count" fill="hsl(243 75% 59%)" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

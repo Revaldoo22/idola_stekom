@@ -18,6 +18,7 @@ import {
 /** Same user-facing messages as the old vote-errors.ts / API routes. */
 const MESSAGES: Record<string, [string, number]> = {
   EVENTCLOSED: ["Event sedang ditutup.", 409],
+  ROUND_ENDED: ["Periode gelombang ini sudah berakhir. Tunggu gelombang berikutnya.", 409],
   NOTFOUND: ["Peserta tidak ditemukan.", 400],
   SELFVOTE: ["Kamu tidak bisa mendukung dirimu sendiri.", 409],
   PHONE_NAME: [

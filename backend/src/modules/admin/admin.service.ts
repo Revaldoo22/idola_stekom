@@ -71,6 +71,23 @@ export class AdminService {
     );
   }
 
+  /** Insight PMB: niat kuliah + sebaran kabupaten voter ber-akun. */
+  async pmbInsight() {
+    const intent = await this.db.query(`
+      select coalesce(college_intent, 'belum_isi') as intent, count(*)::int as count
+      from profiles where role = 'voter' and onboarded = true
+      group by 1 order by count desc`);
+    const regions = await this.db.query(`
+      select rg.name as region, count(*)::int as count
+      from profiles pr join regions rg on rg.id = pr.region_id
+      where pr.role = 'voter' and pr.onboarded = true
+      group by rg.name order by count desc limit 12`);
+    const total = await this.db.query(`
+      select count(*)::int as c from profiles
+      where role = 'voter' and onboarded = true`);
+    return { total: total[0].c, intent, regions };
+  }
+
   /** Combined voter roster (votes + approved quests), filterable + paged. */
   private votersCte = `
     with v as (

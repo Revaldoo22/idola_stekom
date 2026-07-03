@@ -94,6 +94,10 @@ export class VotesService {
 
     // Stempel gelombang aktif (null bila tidak ada round berjalan).
     const activeRound = await this.rounds.active();
+    // Periode gelombang habis → vote ditolak sampai panitia menutup/mengganti.
+    if (activeRound?.endsAt && new Date() > activeRound.endsAt) {
+      throw new VoteError("ROUND_ENDED");
+    }
 
     // Insert + point bump in one transaction; unique indexes are the final
     // guard against concurrent double-submits (Postgres error 23505).

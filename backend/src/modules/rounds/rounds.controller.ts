@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -41,6 +42,12 @@ class PopulateDto {
   from_round_id?: string;
 }
 
+class ScheduleDto {
+  @IsOptional()
+  @IsString()
+  ends_at?: string | null;
+}
+
 class CloseDto {
   @IsInt()
   @Min(1)
@@ -72,6 +79,11 @@ export class RoundsController {
   @Post(":id/populate")
   populate(@Param("id", ParseUUIDPipe) id: string, @Body() dto: PopulateDto) {
     return this.rounds.populate(id, dto.source, dto.from_round_id);
+  }
+
+  @Patch(":id/schedule")
+  schedule(@Param("id", ParseUUIDPipe) id: string, @Body() dto: ScheduleDto) {
+    return this.rounds.schedule(id, dto.ends_at ?? null);
   }
 
   @Post(":id/activate")

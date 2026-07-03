@@ -299,6 +299,7 @@ export function useLeaderboard(limit = 50) {
     queryKey: ["leaderboard", limit],
     queryFn: () =>
       api<ParticipantWithSchool[]>(`/api/public/leaderboard${qs({ limit })}`),
+    refetchInterval: 15_000, // papan skor terasa live
   });
 }
 
@@ -622,6 +623,7 @@ export function useRoundResults(roundId?: string) {
     enabled: !!roundId,
     queryFn: () =>
       api<RoundStanding[]>(`/api/public/rounds/${roundId}/results`),
+    refetchInterval: 15_000,
   });
 }
 
@@ -681,5 +683,19 @@ export function useSchoolRankings(regionId?: string) {
       api<SchoolRankingRow[]>(
         `/api/public/school-rankings${regionId ? `?region_id=${regionId}` : ""}`,
       ),
+    refetchInterval: 20_000,
+  });
+}
+
+export type PmbInsight = {
+  total: number;
+  intent: { intent: string; count: number }[];
+  regions: { region: string; count: number }[];
+};
+
+export function usePmbInsight() {
+  return useQuery({
+    queryKey: ["pmb-insight"],
+    queryFn: () => api<PmbInsight>("/api/admin/pmb-insight"),
   });
 }

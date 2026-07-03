@@ -65,6 +65,11 @@ export class AdminController {
     return this.admin.voterGrowth(days);
   }
 
+  @Get("pmb-insight")
+  pmbInsight() {
+    return this.admin.pmbInsight();
+  }
+
   @Get("voters")
   voters(@Query() q: Record<string, string>) {
     return this.admin.voters(voterFilters(q));

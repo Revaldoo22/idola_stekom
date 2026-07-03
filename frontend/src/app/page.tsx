@@ -7,6 +7,7 @@ import { PrizeButtons } from "@/components/prize-buttons";
 import { MaintenanceOverlay } from "@/components/maintenance-overlay";
 import { EventClosedOverlay } from "@/components/event-closed-overlay";
 import { VoterTodayPanel } from "@/components/voter-today";
+import { RoundCountdown } from "@/components/round-countdown";
 
 export default function HomePage() {
   return (
@@ -29,6 +30,7 @@ export default function HomePage() {
             <GraduationCap className="h-4 w-4" />
             Universitas STEKOM
           </div>
+          <RoundCountdown />
           <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl">
             Festival Karakter Pelajar
           </h1>

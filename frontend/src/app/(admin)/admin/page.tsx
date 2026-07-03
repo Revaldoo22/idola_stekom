@@ -3,7 +3,9 @@
 import {
   BarChart3,
   GraduationCap,
+  MapPin,
   School,
+  Target,
   ThumbsUp,
   TrendingUp,
   Trophy,
@@ -12,6 +14,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DailyVotesChart,
+  IntentPieChart,
+  RegionBarChart,
   TopParticipantsChart,
   VoterGrowthChart,
 } from "@/components/charts";
@@ -20,6 +24,7 @@ import {
   useAdminStats,
   useDailyVoteSeries,
   useLeaderboard,
+  usePmbInsight,
   useVoterGrowth,
 } from "@/lib/queries";
 import { formatNumber } from "@/lib/utils";
@@ -110,6 +115,7 @@ export default function AdminDashboard() {
   const { data: votes } = useDailyVoteSeries(14);
   const { data: growth } = useVoterGrowth(14);
   const { data: top } = useLeaderboard(8);
+  const { data: pmb } = usePmbInsight();
 
   return (
     <div className="space-y-6">
@@ -187,6 +193,30 @@ export default function AdminDashboard() {
             <VoterGrowthChart data={growth} />
           ) : (
             <EmptyState title="Belum ada data voter" />
+          )}
+        </ChartCard>
+
+        <ChartCard
+          icon={Target}
+          title="Niat Kuliah Voter"
+          desc={`Insight PMB dari ${pmb?.total ?? 0} voter ber-akun`}
+        >
+          {pmb && pmb.intent.length > 0 ? (
+            <IntentPieChart data={pmb.intent} />
+          ) : (
+            <EmptyState title="Belum ada data" />
+          )}
+        </ChartCard>
+
+        <ChartCard
+          icon={MapPin}
+          title="Voter per Kabupaten"
+          desc="Sebaran asal voter ber-akun (top 12)"
+        >
+          {pmb && pmb.regions.length > 0 ? (
+            <RegionBarChart data={pmb.regions} />
+          ) : (
+            <EmptyState title="Belum ada data" />
           )}
         </ChartCard>
 
