@@ -14,11 +14,6 @@ export class OnboardingDto {
   @MaxLength(100)
   name!: string;
 
-  @IsString()
-  @MinLength(6, { message: "Password minimal 6 karakter" })
-  @MaxLength(72)
-  password!: string;
-
   /** Vote identity is keyed by WhatsApp number, so we collect it here. */
   @IsString()
   @MinLength(8, { message: "Nomor WhatsApp minimal 8 digit" })

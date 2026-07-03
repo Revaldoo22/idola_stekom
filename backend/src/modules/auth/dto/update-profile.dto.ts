@@ -16,12 +16,6 @@ export class UpdateProfileDto {
   name?: string;
 
   @IsOptional()
-  @IsString()
-  @MinLength(6, { message: "Password minimal 6 karakter" })
-  @MaxLength(72)
-  password?: string;
-
-  @IsOptional()
   @IsUUID()
   school_id?: string;
 

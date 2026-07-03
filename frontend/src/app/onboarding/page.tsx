@@ -62,8 +62,6 @@ export default function OnboardingPage() {
   // Form state
   const [name, setName] = React.useState("");
   const [phone, setPhone] = React.useState("");
-  const [pw, setPw] = React.useState("");
-  const [pw2, setPw2] = React.useState("");
   const [schoolText, setSchoolText] = React.useState("");
   const [kelas, setKelas] = React.useState("");
   const [status, setStatus] = React.useState("");
@@ -105,8 +103,6 @@ export default function OnboardingPage() {
       if (name.trim().length < 2) return "Nama minimal 2 karakter.";
       if (!/^[0-9+\-\s().]{8,20}$/.test(phone.trim()))
         return "Nomor WhatsApp tidak valid (min. 8 digit).";
-      if (pw.length < 6) return "Password minimal 6 karakter.";
-      if (pw !== pw2) return "Konfirmasi password tidak cocok.";
     }
     if (s === 1) {
       if (schoolText.trim().length < 2) return "Isi nama sekolah.";
@@ -138,7 +134,6 @@ export default function OnboardingPage() {
         method: "POST",
         body: JSON.stringify({
           name: name.trim(),
-          password: pw,
           phone_number: phone.trim(),
           ...(match ? { school_id: match.id } : { school_name: schoolText.trim() }),
           class: kelas,
@@ -242,26 +237,6 @@ export default function OnboardingPage() {
                 <p className="text-xs text-muted-foreground">
                   Dipakai sebagai identitas vote-mu (1 nomor = 1 nama).
                 </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Password</Label>
-                  <Input
-                    type="password"
-                    value={pw}
-                    onChange={(e) => setPw(e.target.value)}
-                    placeholder="Min. 6 karakter"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Ulangi Password</Label>
-                  <Input
-                    type="password"
-                    value={pw2}
-                    onChange={(e) => setPw2(e.target.value)}
-                    placeholder="Ketik ulang"
-                  />
-                </div>
               </div>
             </>
           )}

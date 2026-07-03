@@ -8,7 +8,7 @@ import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, Not, Repository } from "typeorm";
 import { Profile, School } from "../../database/entities";
-import { hashPassword, verifyPassword } from "../../common/utils/password";
+import { verifyPassword } from "../../common/utils/password";
 import { normalizePhone } from "../../common/utils/normalize";
 import { LoginDto } from "./dto/login.dto";
 import { OnboardingDto } from "./dto/onboarding.dto";
@@ -145,7 +145,6 @@ export class AuthService {
     userId: string,
     dto: {
       name?: string;
-      password?: string;
       school_id?: string;
       school_name?: string;
       class?: string;
@@ -173,7 +172,6 @@ export class AuthService {
     const newName = dto.name?.trim();
     const nameChanged = !!newName && newName !== user.name;
     if (nameChanged) user.name = newName!;
-    if (dto.password) user.passwordHash = hashPassword(dto.password);
     if (dto.class !== undefined) user.voterClass = dto.class || null;
     if (dto.status !== undefined) user.voterStatus = dto.status || null;
     if (dto.region_id !== undefined) user.regionId = dto.region_id || null;
@@ -220,7 +218,6 @@ export class AuthService {
     }
 
     user.name = dto.name.trim();
-    user.passwordHash = hashPassword(dto.password);
     user.phoneNumber = phone;
     user.schoolId = schoolId;
     user.voterClass = dto.class;

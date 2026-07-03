@@ -35,8 +35,6 @@ export default function AccountPage() {
   const [status, setStatus] = React.useState("");
   const [region, setRegion] = React.useState("");
   const [intent, setIntent] = React.useState("");
-  const [pw, setPw] = React.useState("");
-  const [pw2, setPw2] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [ready, setReady] = React.useState(false);
 
@@ -74,8 +72,6 @@ export default function AccountPage() {
 
   async function save() {
     if (name.trim().length < 2) return void toast.error("Nama minimal 2 karakter.");
-    if (pw && pw.length < 6) return void toast.error("Password minimal 6 karakter.");
-    if (pw && pw !== pw2) return void toast.error("Konfirmasi password tidak cocok.");
     if (schoolText.trim().length < 2) return void toast.error("Isi nama sekolah.");
 
     setBusy(true);
@@ -87,7 +83,6 @@ export default function AccountPage() {
         method: "PATCH",
         body: JSON.stringify({
           name: name.trim(),
-          ...(pw ? { password: pw } : {}),
           ...(match
             ? { school_id: match.id }
             : { school_name: schoolText.trim() }),
@@ -98,8 +93,6 @@ export default function AccountPage() {
         }),
       });
       toast.success("Akun diperbarui.");
-      setPw("");
-      setPw2("");
       qc.invalidateQueries({ queryKey: ["profile", "me"] });
       qc.invalidateQueries({ queryKey: ["my-school-rank"] });
     } catch (e) {
@@ -239,29 +232,6 @@ export default function AccountPage() {
                   <option value="ragu">Masih ragu</option>
                   <option value="tidak">Tidak</option>
                 </select>
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
-              <p className="text-sm font-medium">
-                Ganti Password{" "}
-                <span className="font-normal text-muted-foreground">
-                  (kosongkan jika tidak diganti)
-                </span>
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Input
-                  type="password"
-                  placeholder="Password baru"
-                  value={pw}
-                  onChange={(e) => setPw(e.target.value)}
-                />
-                <Input
-                  type="password"
-                  placeholder="Ulangi password baru"
-                  value={pw2}
-                  onChange={(e) => setPw2(e.target.value)}
-                />
               </div>
             </div>
 
