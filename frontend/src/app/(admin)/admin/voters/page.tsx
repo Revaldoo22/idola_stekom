@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import { FilterBar, FilterField } from "@/components/filter-bar";
 import {
   fetchAllAdminVoters,
   useAdminVoters,
@@ -36,8 +37,6 @@ import { formatNumber, voterStatusLabel } from "@/lib/utils";
 import { dateStamp, exportToExcel } from "@/lib/export-excel";
 
 const PAGE_SIZE = 25;
-const selectCls =
-  "select-ui w-auto";
 
 const STATUS_OPTS = [
   { value: "teman_sekolah", label: "Teman satu sekolah" },
@@ -138,11 +137,8 @@ export default function AdminVotersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div>
           <h1 className="text-2xl font-bold tracking-tight">Daftar Voter</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">Rekap pendukung beserta vote &amp; quest-nya.</p>
-        </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="mt-0.5 text-sm text-muted-foreground">
             Total {formatNumber(totalCount)} voter. Klik baris untuk lihat
             distribusi poin.
           </p>
@@ -161,17 +157,29 @@ export default function AdminVotersPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <Input
-          placeholder="Cari nama, nomor, email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:max-w-xs"
-        />
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground">Peserta</span>
+      <FilterBar
+        showReset={
+          !!(participantId || from || to || statusFilter || schoolFilter || search)
+        }
+        onReset={() => {
+          setParticipantId("");
+          setFrom("");
+          setTo("");
+          setStatusFilter("");
+          setSchoolFilter("");
+          setSearch("");
+        }}
+      >
+        <FilterField label="Cari" span={2}>
+          <Input
+            placeholder="Nama, nomor, atau email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </FilterField>
+        <FilterField label="Peserta">
           <select
-            className={`${selectCls} w-full sm:w-52`}
+            className="select-ui"
             value={participantId}
             onChange={(e) => setParticipantId(e.target.value)}
           >
@@ -182,11 +190,10 @@ export default function AdminVotersPage() {
               </option>
             ))}
           </select>
-        </div>
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground">Status</span>
+        </FilterField>
+        <FilterField label="Status">
           <select
-            className={`${selectCls} w-full sm:w-44`}
+            className="select-ui"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
@@ -197,11 +204,10 @@ export default function AdminVotersPage() {
               </option>
             ))}
           </select>
-        </div>
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground">Sekolah</span>
+        </FilterField>
+        <FilterField label="Sekolah">
           <select
-            className={`${selectCls} w-full sm:w-44`}
+            className="select-ui"
             value={schoolFilter}
             onChange={(e) => setSchoolFilter(e.target.value)}
           >
@@ -212,55 +218,33 @@ export default function AdminVotersPage() {
               </option>
             ))}
           </select>
-        </div>
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground">Urutkan</span>
+        </FilterField>
+        <FilterField label="Urutkan">
           <select
-            className={`${selectCls} w-full sm:w-48`}
+            className="select-ui"
             value={sort}
-            onChange={(e) =>
-              setSort(e.target.value as typeof sort)
-            }
+            onChange={(e) => setSort(e.target.value as typeof sort)}
           >
             <option value="recent">Terbaru bergabung</option>
             <option value="points_desc">Poin tertinggi</option>
             <option value="points_asc">Poin terendah</option>
           </select>
-        </div>
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground">Dari</span>
+        </FilterField>
+        <FilterField label="Dari tanggal">
           <Input
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            className="w-full sm:w-40"
           />
-        </div>
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground">Sampai</span>
+        </FilterField>
+        <FilterField label="Sampai tanggal">
           <Input
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="w-full sm:w-40"
           />
-        </div>
-        {(participantId || from || to || statusFilter || schoolFilter || search) && (
-          <button
-            className="h-9 rounded-md border px-3 text-sm text-muted-foreground hover:bg-muted"
-            onClick={() => {
-              setParticipantId("");
-              setFrom("");
-              setTo("");
-              setStatusFilter("");
-              setSchoolFilter("");
-              setSearch("");
-            }}
-          >
-            Reset
-          </button>
-        )}
-      </div>
+        </FilterField>
+      </FilterBar>
 
       {isLoading ? (
         <LoadingState />

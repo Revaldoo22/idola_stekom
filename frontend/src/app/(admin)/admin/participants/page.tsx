@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/table";
 import { CardSkeletonGrid, EmptyState, ErrorState } from "@/components/states";
 import { useConfirm } from "@/components/confirm-dialog";
+import { FilterBar, FilterField } from "@/components/filter-bar";
 import {
   useAdminParticipants,
   useParticipantPointLog,
@@ -348,23 +349,29 @@ export default function AdminParticipantsPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          placeholder="Cari nama peserta, sekolah, atau nomor WA..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:max-w-sm"
-        />
-        <select
-          className={selectCls + " w-full sm:w-48"}
-          value={sort}
-          onChange={(e) => setSort(e.target.value as typeof sort)}
-        >
-          <option value="points_desc">Poin tertinggi</option>
-          <option value="points_asc">Poin terendah</option>
-          <option value="name">Nama A-Z</option>
-        </select>
-      </div>
+      <FilterBar
+        showReset={!!search}
+        onReset={() => setSearch("")}
+      >
+        <FilterField label="Cari" span={2}>
+          <Input
+            placeholder="Nama peserta, sekolah, atau nomor WA..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </FilterField>
+        <FilterField label="Urutkan">
+          <select
+            className="select-ui"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as typeof sort)}
+          >
+            <option value="points_desc">Poin tertinggi</option>
+            <option value="points_asc">Poin terendah</option>
+            <option value="name">Nama A-Z</option>
+          </select>
+        </FilterField>
+      </FilterBar>
 
       {isLoading ? (
         <CardSkeletonGrid />

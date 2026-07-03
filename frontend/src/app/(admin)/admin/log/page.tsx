@@ -20,10 +20,9 @@ import {
   useParticipants,
 } from "@/lib/queries";
 import { formatNumber } from "@/lib/utils";
+import { FilterBar, FilterField } from "@/components/filter-bar";
 
 const PAGE_SIZE = 30;
-const selectCls =
-  "select-ui w-auto";
 
 const KIND_OPTS = [
   { value: "all", label: "Semua jenis" },
@@ -114,26 +113,34 @@ export default function AdminLogPage() {
   return (
     <div className="space-y-6">
       <div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Log Aktivitas</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">Semua vote &amp; submission yang masuk, real-time.</p>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {formatNumber(totalCount)} aktivitas (vote, favorit, quest).
+        <h1 className="text-2xl font-bold tracking-tight">Log Aktivitas</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          {formatNumber(totalCount)} aktivitas (vote, favorit, quest) —
+          real-time.
         </p>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <Input
-          placeholder="Cari voter (nama/nomor)..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:max-w-xs"
-        />
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground">Jenis</span>
+      <FilterBar
+        showReset={!!(search || kind !== "all" || participantId || qstatus || from || to)}
+        onReset={() => {
+          setSearch("");
+          setKind("all");
+          setParticipantId("");
+          setQstatus("");
+          setFrom("");
+          setTo("");
+        }}
+      >
+        <FilterField label="Cari voter" span={2}>
+          <Input
+            placeholder="Nama atau nomor..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </FilterField>
+        <FilterField label="Jenis">
           <select
-            className={`${selectCls} w-full sm:w-48`}
+            className="select-ui"
             value={kind}
             onChange={(e) => setKind(e.target.value)}
           >
@@ -143,11 +150,10 @@ export default function AdminLogPage() {
               </option>
             ))}
           </select>
-        </div>
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground">Peserta</span>
+        </FilterField>
+        <FilterField label="Peserta">
           <select
-            className={`${selectCls} w-full sm:w-52`}
+            className="select-ui"
             value={participantId}
             onChange={(e) => setParticipantId(e.target.value)}
           >
@@ -158,12 +164,11 @@ export default function AdminLogPage() {
               </option>
             ))}
           </select>
-        </div>
+        </FilterField>
         {showQstatus && (
-          <div className="space-y-1">
-            <span className="text-xs text-muted-foreground">Status quest</span>
+          <FilterField label="Status quest">
             <select
-              className={`${selectCls} w-full sm:w-40`}
+              className="select-ui"
               value={qstatus}
               onChange={(e) => setQstatus(e.target.value)}
             >
@@ -173,27 +178,23 @@ export default function AdminLogPage() {
                 </option>
               ))}
             </select>
-          </div>
+          </FilterField>
         )}
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground">Dari</span>
+        <FilterField label="Dari tanggal">
           <Input
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            className="w-full sm:w-40"
           />
-        </div>
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground">Sampai</span>
+        </FilterField>
+        <FilterField label="Sampai tanggal">
           <Input
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="w-full sm:w-40"
           />
-        </div>
-      </div>
+        </FilterField>
+      </FilterBar>
 
       {isLoading ? (
         <LoadingState />
