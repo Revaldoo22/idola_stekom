@@ -87,8 +87,8 @@ export class PublicService {
          from (select day, pts from vote_day union all select day, pts from quest_day) u
          group by day
        )
-       select to_char(day, 'YYYY-MM-DD') as day, points::bigint as points,
-              sum(points) over (order by day)::bigint as cumulative
+       select to_char(day, 'YYYY-MM-DD') as day, points::int as points,
+              sum(points) over (order by day)::int as cumulative
        from merged order by day`,
       [participantId],
     );
@@ -119,7 +119,7 @@ export class PublicService {
          from vote_pts v
          full outer join quest_pts qp on qp.voter_phone = v.voter_phone
        )
-       select nm as voter_name, st as voter_status, votes::bigint, points::bigint
+       select nm as voter_name, st as voter_status, votes::int, points::int
        from combined where points > 0 order by points desc limit $2`,
       [participantId, limit],
     );
@@ -166,9 +166,9 @@ export class PublicService {
        )
        select coalesce(v.nm, q.nm, v.voter_phone, q.voter_phone) as voter_name,
               coalesce(v.school, '') as school_name,
-              coalesce(v.votes, 0)::bigint as votes,
-              coalesce(q.quests, 0)::bigint as quests,
-              (coalesce(v.pts, 0) + coalesce(q.quest_points, 0))::bigint as score
+              coalesce(v.votes, 0)::int as votes,
+              coalesce(q.quests, 0)::int as quests,
+              (coalesce(v.pts, 0) + coalesce(q.quest_points, 0))::int as score
        from v full outer join q on q.voter_phone = v.voter_phone
        where coalesce(v.votes, 0) > 0 or coalesce(q.quests, 0) > 0
        order by score desc limit $1`,

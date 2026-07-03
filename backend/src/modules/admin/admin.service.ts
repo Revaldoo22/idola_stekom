@@ -37,12 +37,12 @@ export class AdminService {
   async stats() {
     const rows = await this.db.query(`
       select
-        (select count(*) from schools)::bigint                          as total_schools,
-        (select count(*) from participants)::bigint                     as total_participants,
+        (select count(*) from schools)::int                          as total_schools,
+        (select count(*) from participants)::int                     as total_participants,
         (select count(distinct voter_phone) from daily_votes
-          where voter_phone is not null)::bigint                        as total_voters,
-        (select count(*) from daily_votes)::bigint                      as total_votes,
-        (select coalesce(sum(total_points), 0) from participants)::bigint as total_points`);
+          where voter_phone is not null)::int                        as total_voters,
+        (select count(*) from daily_votes)::int                      as total_votes,
+        (select coalesce(sum(total_points), 0) from participants)::int as total_points`);
     return rows[0];
   }
 
@@ -51,7 +51,7 @@ export class AdminService {
     return this.db.query(
       `select to_char(d::date, 'YYYY-MM-DD') as day,
               coalesce((select count(*) from daily_votes dv
-                        where dv.vote_date = d::date), 0)::bigint as votes
+                        where dv.vote_date = d::date), 0)::int as votes
        from generate_series(current_date - ($1::int - 1), current_date, interval '1 day') d
        order by d`,
       [clamped],
@@ -64,7 +64,7 @@ export class AdminService {
       `select to_char(d::date, 'YYYY-MM-DD') as day,
               (select count(distinct voter_phone) from daily_votes
                where voter_phone is not null
-                 and created_at::date <= d::date)::bigint as cumulative
+                 and created_at::date <= d::date)::int as cumulative
        from generate_series(current_date - ($1::int - 1), current_date, interval '1 day') d
        order by d`,
       [clamped],
@@ -142,7 +142,7 @@ export class AdminService {
     return this.db.query(
       `${this.votersCte}
        select voter_phone, voter_name, voter_email, voter_status, voter_school,
-              voter_class, votes::bigint, quests::bigint, points::bigint,
+              voter_class, votes::int, quests::int, points::int,
               first_seen, last_seen
        from filtered order by ${order}
        limit $7 offset $8`,
@@ -173,9 +173,9 @@ export class AdminService {
        ),
        ids as (select participant_id from v union select participant_id from q)
        select i.participant_id, p.name as participant_name, sch.name as school_name,
-              coalesce(v.votes, 0)::bigint as votes,
-              coalesce(q.quests, 0)::bigint as quests,
-              (coalesce(v.pts, 0) + coalesce(q.pts, 0))::bigint as points
+              coalesce(v.votes, 0)::int as votes,
+              coalesce(q.quests, 0)::int as quests,
+              (coalesce(v.pts, 0) + coalesce(q.pts, 0))::int as points
        from ids i
        join participants p on p.id = i.participant_id
        left join schools sch on sch.id = p.school_id
