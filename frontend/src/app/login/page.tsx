@@ -31,8 +31,8 @@ export default function LoginChooserPage() {
             </Link>
           </Button>
           <p className="pt-2 text-center text-xs text-muted-foreground">
-            Pendukung (voter): masuk dengan Google, lalu lengkapi profil sekali
-            saja. Setelah itu langsung bisa vote di{" "}
+            Voter masuk pakai akun Google, lengkapi profil sekali, lalu
+            langsung bisa vote di{" "}
             <Link href="/" className="text-primary hover:underline">
               halaman utama
             </Link>
