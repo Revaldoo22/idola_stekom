@@ -7,7 +7,7 @@ import { Providers } from "@/components/providers";
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-const title = "Youth Character Summit — Universitas STEKOM";
+const title = "Youth Character Summit - Universitas STEKOM";
 const description =
   "Platform kompetisi karakter pelajar SMA/SMK. Dukung peserta favoritmu dan menangkan smartphone, sertifikat, & jadi Duta Teladan STEKOM!";
 

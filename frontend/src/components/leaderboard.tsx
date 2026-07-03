@@ -55,7 +55,7 @@ export function Leaderboard({ limit = 50 }: { limit?: number }) {
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold">{p.name}</p>
               <p className="truncate text-xs text-muted-foreground">
-                {p.schools?.name ?? "—"}
+                {p.schools?.name ?? "-"}
               </p>
             </div>
             <Badge variant={rank <= 3 ? "accent" : "secondary"} className="shrink-0">

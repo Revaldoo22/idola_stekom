@@ -239,7 +239,7 @@ export default function AdminQuestsPage() {
                     <TableCell>
                       <p className="font-medium">{q.name}</p>
                       <p className="line-clamp-1 max-w-xs text-xs text-muted-foreground">
-                        {q.description || "—"}
+                        {q.description || "-"}
                       </p>
                     </TableCell>
                     <TableCell className="text-right font-semibold">
@@ -349,7 +349,7 @@ export default function AdminQuestsPage() {
                   <option value="once">Sekali per peserta (permanen)</option>
                   <option value="daily">Harian (ulang tiap hari)</option>
                   <option value="global">
-                    Global — sekali untuk semua peserta (mis. follow)
+                    Global - sekali untuk semua peserta (mis. follow)
                   </option>
                 </select>
               </div>

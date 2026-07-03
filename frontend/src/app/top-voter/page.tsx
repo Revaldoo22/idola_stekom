@@ -65,7 +65,7 @@ export default function TopVoterPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{v.voter_name}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {v.school_name ?? "—"} · {formatNumber(v.votes)} vote ·{" "}
+                      {v.school_name ?? "-"} · {formatNumber(v.votes)} vote ·{" "}
                       {formatNumber(v.quests)} quest
                     </p>
                   </div>

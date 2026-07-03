@@ -528,7 +528,7 @@ export default function ParticipantDashboard() {
           icon={Award}
           tone="primary"
           label="Peringkat"
-          value={rank ? `#${rank}` : "—"}
+          value={rank ? `#${rank}` : "-"}
         />
         <StatCard
           icon={Users}

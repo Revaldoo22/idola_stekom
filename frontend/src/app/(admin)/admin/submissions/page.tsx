@@ -91,7 +91,7 @@ export default function AdminSubmissionsPage() {
     try {
       // Optimistic: item langsung hilang dari list (onMutate di hook).
       await review.mutateAsync({ id, status: "approved" });
-      toast.success("Disetujui — poin ditambahkan.");
+      toast.success("Disetujui - poin ditambahkan.");
     } catch (e) {
       toast.error("Gagal memproses: " + (e as Error).message);
     } finally {
@@ -246,13 +246,13 @@ export default function AdminSubmissionsPage() {
                 <div className="text-sm">
                   <p className="font-medium">{s.quests?.name}</p>
                   <p className="text-muted-foreground">
-                    Untuk: {s.participants?.name ?? "—"}
+                    Untuk: {s.participants?.name ?? "-"}
                     {s.participants?.schools?.name
                       ? ` · ${s.participants.schools.name}`
                       : ""}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Oleh: {s.voter_name ?? "—"}
+                    Oleh: {s.voter_name ?? "-"}
                     {s.voter_email ? ` · ${s.voter_email}` : ""}
                   </p>
                   {(s.voter_phone || s.voter_school) && (

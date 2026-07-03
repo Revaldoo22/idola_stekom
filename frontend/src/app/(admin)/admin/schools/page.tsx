@@ -184,7 +184,7 @@ export default function AdminSchoolsPage() {
                         value={(s as SchoolRow).region?.id ?? ""}
                         onChange={(e) => setRegion(s.id, e.target.value || null)}
                       >
-                        <option value="">— tanpa kabupaten —</option>
+                        <option value="">Tanpa kabupaten</option>
                         {(regions ?? []).map((r) => (
                           <option key={r.id} value={r.id}>
                             {r.name}

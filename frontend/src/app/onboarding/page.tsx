@@ -170,7 +170,7 @@ export default function OnboardingPage() {
           <div>
             <h1 className="text-xl font-bold">Lengkapi Profilmu</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Sekali saja — biar vote &amp; quest-mu tercatat atas namamu.
+              Sekali saja - biar vote &amp; quest-mu tercatat atas namamu.
               {me.email && (
                 <>
                   {" "}
@@ -265,7 +265,7 @@ export default function OnboardingPage() {
                   value={kelas}
                   onChange={(e) => setKelas(e.target.value)}
                 >
-                  <option value="">— pilih kelas —</option>
+                  <option value="">Pilih kelas</option>
                   <option value="10">Kelas 10</option>
                   <option value="11">Kelas 11</option>
                   <option value="12">Kelas 12</option>
@@ -279,7 +279,7 @@ export default function OnboardingPage() {
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
                 >
-                  <option value="">— pilih status —</option>
+                  <option value="">Pilih status</option>
                   {STATUS_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
@@ -299,7 +299,7 @@ export default function OnboardingPage() {
                   value={region}
                   onChange={(e) => setRegion(e.target.value)}
                 >
-                  <option value="">— pilih kabupaten —</option>
+                  <option value="">Pilih kabupaten</option>
                   {(regions ?? []).map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.name}

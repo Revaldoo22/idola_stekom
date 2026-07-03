@@ -189,7 +189,7 @@ export default function HeatmapPage() {
               value={regionId}
               onChange={(e) => setRegionId(e.target.value)}
             >
-              <option value="">— pilih kabupaten —</option>
+              <option value="">Pilih kabupaten</option>
               {(regions ?? []).map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}

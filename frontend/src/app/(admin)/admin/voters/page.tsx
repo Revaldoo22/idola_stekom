@@ -292,11 +292,11 @@ export default function AdminVotersPage() {
                         </p>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {voterStatusLabel(v.voter_status) || "—"}
+                        {voterStatusLabel(v.voter_status) || "-"}
                         {v.voter_class ? ` (${v.voter_class})` : ""}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {v.voter_school ?? "—"}
+                        {v.voter_school ?? "-"}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {v.first_seen
@@ -305,7 +305,7 @@ export default function AdminVotersPage() {
                               month: "short",
                               year: "numeric",
                             })
-                          : "—"}
+                          : "-"}
                       </TableCell>
                       <TableCell className="text-right">
                         {formatNumber(v.votes)}
@@ -392,7 +392,7 @@ function DistributionDialog({
                   <div className="min-w-0">
                     <p className="truncate font-medium">{d.participant_name}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {d.school_name ?? "—"} · {formatNumber(d.votes)} vote ·{" "}
+                      {d.school_name ?? "-"} · {formatNumber(d.votes)} vote ·{" "}
                       {formatNumber(d.quests)} quest
                     </p>
                   </div>

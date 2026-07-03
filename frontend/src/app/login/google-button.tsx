@@ -44,7 +44,7 @@ export function GoogleButton() {
       className="flex h-10 w-full cursor-pointer items-center justify-center gap-2.5 rounded-lg border border-input bg-background text-sm font-semibold shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <GoogleIcon />
-      Masuk dengan Google — Pendukung
+      Masuk dengan Google
     </a>
   );
 }

@@ -79,7 +79,7 @@ export function EventClosedOverlay() {
             </h1>
             <p className="mx-auto max-w-xl text-muted-foreground">
               {settings.closed_message ||
-                "Terima kasih sudah ikut meramaikan Youth Character Summit! Periode dukungan & quest sudah berakhir. Nantikan event berikutnya — sampai jumpa lagi! 🎉"}
+                "Terima kasih sudah ikut meramaikan Youth Character Summit! Periode dukungan & quest sudah berakhir. Nantikan event berikutnya - sampai jumpa lagi! 🎉"}
             </p>
           </div>
         </div>

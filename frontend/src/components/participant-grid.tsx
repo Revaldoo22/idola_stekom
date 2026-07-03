@@ -156,7 +156,7 @@ export function ParticipantGrid() {
                   <p className="truncate text-sm font-semibold">{p.name}</p>
                   <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
                     <SchoolIcon className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{p.schools?.name ?? "—"}</span>
+                    <span className="truncate">{p.schools?.name ?? "-"}</span>
                   </p>
                   <div className="mt-2 flex items-center justify-end text-xs font-semibold text-primary">
                     Dukung

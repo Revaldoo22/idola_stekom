@@ -91,7 +91,7 @@ export default function PublicRoundsPage() {
 
             {round?.status === "active" && (
               <div className="rounded-xl border border-primary/25 bg-primary/5 p-3 text-center text-sm font-medium text-primary">
-                Gelombang ini masih berlangsung — klasemen live, hasil bisa
+                Gelombang ini masih berlangsung - klasemen live, hasil bisa
                 berubah. Terus dukung sekolahmu!
               </div>
             )}

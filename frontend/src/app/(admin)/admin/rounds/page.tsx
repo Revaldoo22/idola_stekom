@@ -186,7 +186,7 @@ export default function AdminRoundsPage() {
                       <p className="text-xs text-muted-foreground">
                         {r.starts_at
                           ? new Date(r.starts_at).toLocaleDateString("id-ID")
-                          : "—"}
+                          : "-"}
                         {r.ends_at &&
                           ` s/d ${new Date(r.ends_at).toLocaleDateString("id-ID")}`}
                       </p>
@@ -333,7 +333,7 @@ function PopulateDialog({
     <Dialog open={!!round} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Isi Sekolah — {round?.name}</DialogTitle>
+          <DialogTitle>Isi Sekolah: {round?.name}</DialogTitle>
           <DialogDescription>
             Tentukan sekolah mana yang ikut bertanding di gelombang ini.
           </DialogDescription>
@@ -371,7 +371,7 @@ function PopulateDialog({
                 value={fromRound}
                 onChange={(e) => setFromRound(e.target.value)}
               >
-                <option value="">— pilih gelombang selesai —</option>
+                <option value="">Pilih gelombang selesai</option>
                 {closedRounds.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}
@@ -487,7 +487,7 @@ function StandingsDialog({
     <Dialog open={!!round} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Klasemen — {round?.name}</DialogTitle>
+          <DialogTitle>Klasemen: {round?.name}</DialogTitle>
           <DialogDescription>
             Poin vote per sekolah dalam gelombang ini, dikelompokkan per
             kabupaten.
@@ -650,10 +650,10 @@ function ManageDialog({
     <Dialog open={!!round} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Kelola — {round?.name}</DialogTitle>
+          <DialogTitle>Kelola: {round?.name}</DialogTitle>
           <DialogDescription>
             Jadwal, aturan lolos, dan sekolah peserta gelombang ini.
-            {closed && " Gelombang sudah ditutup — hanya bisa dilihat."}
+            {closed && " Gelombang sudah ditutup - hanya bisa dilihat."}
           </DialogDescription>
         </DialogHeader>
 
@@ -721,7 +721,7 @@ function ManageDialog({
                   value={addId}
                   onChange={(e) => setAddId(e.target.value)}
                 >
-                  <option value="">— tambah sekolah —</option>
+                  <option value="">Tambah sekolah</option>
                   {addable.map((sc) => (
                     <option key={sc.id} value={sc.id}>
                       {sc.name}
@@ -736,7 +736,7 @@ function ManageDialog({
           </div>
           {(roundSchools ?? []).length === 0 ? (
             <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-              Belum ada sekolah — pakai &quot;Isi Sekolah&quot; untuk bulk,
+              Belum ada sekolah - pakai &quot;Isi Sekolah&quot; untuk bulk,
               atau tambah satuan di atas.
             </p>
           ) : (

@@ -18,7 +18,7 @@ import { ContactAdminButton } from "@/components/contact-admin";
 import { PasswordLookup } from "./password-lookup";
 
 export const metadata: Metadata = {
-  title: "Panduan Peserta — Youth Character Summit STEKOM",
+  title: "Panduan Peserta - Youth Character Summit STEKOM",
   description:
     "Panduan penggunaan dashboard peserta: poin, peringkat, supporter, konten, dan pengaturan akun.",
 };
@@ -181,7 +181,7 @@ export default function PanduanPesertaPage() {
       </main>
 
       <footer className="border-t py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Youth Character Summit — Universitas
+        © {new Date().getFullYear()} Youth Character Summit - Universitas
         STEKOM.
       </footer>
     </div>

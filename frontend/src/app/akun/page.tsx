@@ -143,7 +143,7 @@ export default function AccountPage() {
               <div className="min-w-0 text-sm">
                 <p className="truncate font-medium">{me?.email}</p>
                 <p className="truncate text-xs text-muted-foreground">
-                  WA: {me?.phone_number ?? "—"} · Foto mengikuti akun Google
+                  WA: {me?.phone_number ?? "-"} · Foto mengikuti akun Google
                   (login ulang untuk refresh)
                 </p>
               </div>
@@ -180,7 +180,7 @@ export default function AccountPage() {
                   value={kelas}
                   onChange={(e) => setKelas(e.target.value)}
                 >
-                  <option value="">— pilih —</option>
+                  <option value="">Pilih</option>
                   <option value="10">Kelas 10</option>
                   <option value="11">Kelas 11</option>
                   <option value="12">Kelas 12</option>
@@ -194,7 +194,7 @@ export default function AccountPage() {
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
                 >
-                  <option value="">— pilih —</option>
+                  <option value="">Pilih</option>
                   {STATUS_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
@@ -212,7 +212,7 @@ export default function AccountPage() {
                   value={region}
                   onChange={(e) => setRegion(e.target.value)}
                 >
-                  <option value="">— pilih —</option>
+                  <option value="">Pilih</option>
                   {(regions ?? []).map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.name}
@@ -227,7 +227,7 @@ export default function AccountPage() {
                   value={intent}
                   onChange={(e) => setIntent(e.target.value)}
                 >
-                  <option value="">— pilih —</option>
+                  <option value="">Pilih</option>
                   <option value="ya">Ya</option>
                   <option value="ragu">Masih ragu</option>
                   <option value="tidak">Tidak</option>

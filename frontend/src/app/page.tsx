@@ -69,7 +69,7 @@ export default function HomePage() {
       </section>
 
       <footer className="border-t py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Youth Character Summit — Universitas
+        © {new Date().getFullYear()} Youth Character Summit - Universitas
         STEKOM.
       </footer>
     </div>

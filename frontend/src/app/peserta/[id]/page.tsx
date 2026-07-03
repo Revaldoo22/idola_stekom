@@ -257,7 +257,7 @@ function ShareButton({ name }: { name: string }) {
         await navigator.share({ title: name, text, url });
         return;
       } catch {
-        return; // user batal — jangan tampilkan error
+        return; // user batal - jangan tampilkan error
       }
     }
     try {
@@ -314,7 +314,7 @@ function VoteDialog({
     }
     confirm({
       title: "Pastikan data kamu benar",
-      description: `Nama: ${voter.data.name}\nNomor WhatsApp: ${voter.data.phone_number}\nEmail: ${voter.data.email}\n\nData ini dipakai panitia untuk menghubungimu jika kamu mendapatkan reward. Pastikan benar — tidak bisa diubah setelah dikirim.`,
+      description: `Nama: ${voter.data.name}\nNomor WhatsApp: ${voter.data.phone_number}\nEmail: ${voter.data.email}\n\nData ini dipakai panitia untuk menghubungimu jika kamu mendapatkan reward. Pastikan benar - tidak bisa diubah setelah dikirim.`,
       confirmText: "Saya Yakin, Kirim",
       onConfirm: doSubmit,
     });
@@ -482,7 +482,7 @@ function QuestCard({
     }
     confirm({
       title: "Pastikan data kamu benar",
-      description: `Nama: ${voter.data.name}\nNomor WhatsApp: ${voter.data.phone_number}\nEmail: ${voter.data.email}\n\nData ini dipakai panitia untuk menghubungimu jika kamu mendapatkan reward. Pastikan benar — tidak bisa diubah setelah dikirim.`,
+      description: `Nama: ${voter.data.name}\nNomor WhatsApp: ${voter.data.phone_number}\nEmail: ${voter.data.email}\n\nData ini dipakai panitia untuk menghubungimu jika kamu mendapatkan reward. Pastikan benar - tidak bisa diubah setelah dikirim.`,
       confirmText: "Saya Yakin, Kirim",
       onConfirm: doSubmit,
     });

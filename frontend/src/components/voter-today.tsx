@@ -84,7 +84,7 @@ export function VoterTodayPanel() {
 
         {data.votes.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Belum ada vote hari ini — dukung pesertamu di bawah!
+            Belum ada vote hari ini - dukung pesertamu di bawah!
           </p>
         ) : (
           <ul className="flex flex-wrap gap-1.5">

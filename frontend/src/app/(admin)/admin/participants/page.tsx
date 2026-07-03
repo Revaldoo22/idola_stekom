@@ -321,7 +321,7 @@ export default function AdminParticipantsPage() {
   function copyCreds() {
     if (!creds) return;
     navigator.clipboard.writeText(
-      `Login Peserta — ${creds.name}\n${
+      `Login Peserta: ${creds.name}\n${
         creds.phone_number ? `Nomor WA: ${creds.phone_number}\n` : ""
       }Password: ${creds.password}`
     );
@@ -419,10 +419,10 @@ export default function AdminParticipantsPage() {
                       </button>
                     </TableCell>
                     <TableCell className="font-mono text-sm text-muted-foreground">
-                      {p.profiles?.phone_number ?? "—"}
+                      {p.profiles?.phone_number ?? "-"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {p.schools?.name ?? "—"}
+                      {p.schools?.name ?? "-"}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
                       {formatNumber(p.total_points)}
@@ -768,7 +768,7 @@ function ParticipantDetailDialog({
         <DialogHeader>
           <DialogTitle>{participant?.name}</DialogTitle>
           <DialogDescription>
-            {participant?.schools?.name ?? "—"} · Total{" "}
+            {participant?.schools?.name ?? "-"} · Total{" "}
             {formatNumber(participant?.total_points ?? 0)} poin · Rincian poin
             masuk
           </DialogDescription>

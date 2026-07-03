@@ -115,7 +115,7 @@ export default function AdminLogPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Log Aktivitas</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          {formatNumber(totalCount)} aktivitas (vote, favorit, quest) —
+          {formatNumber(totalCount)} aktivitas (vote, favorit, quest) -
           real-time.
         </p>
       </div>
@@ -256,7 +256,7 @@ export default function AdminLogPage() {
                             {r.status}
                           </Badge>
                         ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
+                          <span className="text-xs text-muted-foreground">-</span>
                         )}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
