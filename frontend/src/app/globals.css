@@ -4,48 +4,49 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --background: 220 33% 98%;
+    --foreground: 229 45% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 229 45% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --popover-foreground: 229 45% 12%;
+    /* Indigo-violet — modern, tetap profesional */
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 226 40% 96%;
+    --secondary-foreground: 229 45% 12%;
+    --muted: 226 40% 96%;
+    --muted-foreground: 227 15% 45%;
     --accent: 38 92% 50%;
-    --accent-foreground: 222 47% 11%;
+    --accent-foreground: 229 45% 12%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
-    --radius: 0.75rem;
+    --border: 226 30% 90%;
+    --input: 226 30% 88%;
+    --ring: 243 75% 59%;
+    --radius: 1rem;
   }
 
   .dark {
-    --background: 222 47% 7%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 38 92% 50%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 63% 31%;
+    --background: 232 47% 6%;
+    --foreground: 220 30% 96%;
+    --card: 232 40% 9%;
+    --card-foreground: 220 30% 96%;
+    --popover: 232 40% 9%;
+    --popover-foreground: 220 30% 96%;
+    --primary: 243 85% 67%;
+    --primary-foreground: 232 47% 8%;
+    --secondary: 231 30% 16%;
+    --secondary-foreground: 220 30% 96%;
+    --muted: 231 30% 16%;
+    --muted-foreground: 226 18% 66%;
+    --accent: 38 92% 55%;
+    --accent-foreground: 232 47% 8%;
+    --destructive: 0 63% 40%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 224 76% 48%;
+    --border: 231 28% 18%;
+    --input: 231 28% 20%;
+    --ring: 243 85% 67%;
   }
 }
 
@@ -54,6 +55,35 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+  }
+  ::selection {
+    @apply bg-primary/20;
+  }
+}
+
+@layer utilities {
+  /* Judul gradient — dipakai hero & logo. */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary via-violet-500 to-fuchsia-500 bg-clip-text text-transparent;
+  }
+  /* Latar glow lembut untuk hero/section. */
+  .bg-glow {
+    background:
+      radial-gradient(600px circle at 15% 0%, hsl(var(--primary) / 0.14), transparent 55%),
+      radial-gradient(700px circle at 85% 10%, hsl(280 80% 60% / 0.1), transparent 55%);
+  }
+  /* Kartu interaktif: naik halus + ring saat hover. */
+  .card-lift {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5 hover:ring-1 hover:ring-primary/20;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-lift {
+    transition: none;
+  }
+  .card-lift:hover {
+    transform: none;
   }
 }

@@ -59,10 +59,10 @@ export function Navbar({
       <div className="container flex h-16 items-center justify-between gap-2">
         {/* Logo */}
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-600 text-white shadow-sm">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet-600 text-white shadow-sm">
             <GraduationCap className="h-5 w-5" />
           </span>
-          <span className="hidden bg-gradient-to-r from-primary to-blue-600 bg-clip-text font-bold leading-tight text-transparent sm:inline">
+          <span className="hidden bg-gradient-to-r from-primary to-violet-600 bg-clip-text font-bold leading-tight text-transparent sm:inline">
             Festival Karakter Pelajar
           </span>
           <span className="font-bold sm:hidden">FKP</span>
@@ -78,7 +78,7 @@ export function Navbar({
                 <Link
                   key={l.href}
                   href={l.href}
-                  className="ml-1 flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-primary to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.03] hover:shadow-md"
+                  className="ml-1 flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-primary to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.03] hover:shadow-md"
                 >
                   {Icon && <Icon className="h-4 w-4" />}
                   {l.label}

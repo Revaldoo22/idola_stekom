@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -63,38 +62,38 @@ export function ParticipantGrid() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {paged.map((p) => (
             <Link key={p.id} href={`/peserta/${p.id}`} className="group">
-              <Card className="h-full overflow-hidden transition-shadow group-hover:shadow-md">
+              <Card className="card-lift h-full overflow-hidden rounded-2xl border-border/60">
                 <div className="relative aspect-square w-full overflow-hidden bg-muted">
                   {p.photo_url ? (
-                    <Image
-                      src={p.photo_url}
-                      alt={p.name}
-                      fill
-                      sizes="(max-width:768px) 50vw, (max-width:1280px) 25vw, 20vw"
-                      className="object-cover transition-transform group-hover:scale-105"
-                    />
+                    <>
+                      <Image
+                        src={p.photo_url}
+                        alt={p.name}
+                        fill
+                        sizes="(max-width:768px) 50vw, (max-width:1280px) 25vw, 20vw"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/30 to-transparent" />
+                    </>
                   ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <Avatar className="h-14 w-14">
-                        <AvatarFallback>
+                    <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/5 to-violet-500/10">
+                      <Avatar className="h-14 w-14 ring-2 ring-primary/20">
+                        <AvatarFallback className="bg-primary/10 font-semibold text-primary">
                           {p.name.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                     </div>
                   )}
-                  <Badge
-                    variant="accent"
-                    className="absolute right-1.5 top-1.5 shadow"
-                  >
-                    {formatNumber(p.total_points)}
-                  </Badge>
+                  <span className="absolute right-2 top-2 rounded-full border border-white/30 bg-black/45 px-2.5 py-0.5 text-xs font-bold text-white backdrop-blur-sm">
+                    {formatNumber(p.total_points)} poin
+                  </span>
                 </div>
                 <CardContent className="p-3">
                   <p className="truncate text-sm font-semibold">{p.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {p.schools?.name ?? "—"}
                   </p>
-                  <div className="mt-1.5 flex items-center justify-end text-xs font-medium text-primary">
+                  <div className="mt-2 flex items-center justify-end text-xs font-semibold text-primary">
                     Dukung
                     <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                   </div>
