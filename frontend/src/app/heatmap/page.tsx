@@ -24,10 +24,7 @@ function heat(ratio: number): string {
 
 export default function HeatmapPage() {
   const { data: activeRound } = useActiveRound();
-  const [scope, setScope] = React.useState<"round" | "all">("round");
-  const roundId =
-    scope === "round" && activeRound ? activeRound.id : undefined;
-  const { data, isLoading } = useHeatmap(roundId);
+  const { data, isLoading } = useHeatmap();
 
   const rows = data ?? [];
   const max = Math.max(1, ...rows.map((r) => r.points));
@@ -53,38 +50,13 @@ export default function HeatmapPage() {
               Heatmap Kabupaten
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Persaingan antar kabupaten — makin pekat, makin panas votingnya.
-              {activeRound && scope === "round" && (
+              Poin kabupaten = akumulasi poin seluruh peserta sekolahnya
+              (vote + quest).
+              {activeRound && (
                 <> Sedang berlangsung: <strong>{activeRound.name}</strong>.</>
               )}
             </p>
           </div>
-          {activeRound && (
-            <div className="flex rounded-lg border p-0.5 text-sm">
-              <button
-                className={cn(
-                  "cursor-pointer rounded-md px-3 py-1.5 transition-colors",
-                  scope === "round"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-                onClick={() => setScope("round")}
-              >
-                {activeRound.name}
-              </button>
-              <button
-                className={cn(
-                  "cursor-pointer rounded-md px-3 py-1.5 transition-colors",
-                  scope === "all"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-                onClick={() => setScope("all")}
-              >
-                Sepanjang Event
-              </button>
-            </div>
-          )}
         </div>
 
         {isLoading ? (

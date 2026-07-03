@@ -96,8 +96,8 @@ export class PublicRoundsController {
   constructor(private readonly rounds: RoundsService) {}
 
   @Get("heatmap")
-  heatmap(@Query("round_id") roundId?: string) {
-    return this.rounds.heatmap(roundId || undefined);
+  heatmap() {
+    return this.rounds.heatmap();
   }
 
   @Get("active-round")

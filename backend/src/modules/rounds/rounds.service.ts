@@ -111,18 +111,26 @@ export class RoundsService {
     return { ok: true };
   }
 
-  /** Klasemen sekolah dalam satu round (vote round itu saja), per kabupaten. */
+  /**
+   * Klasemen sekolah per kabupaten. Poin sekolah = jumlah total_points
+   * seluruh peserta aktif sekolah itu (vote + quest yang disetujui).
+   */
   standings(id: string) {
     return this.db.query(
       `select rs.school_id, s.name as school_name, rs.status,
               rg.id as region_id, coalesce(rg.name, 'Tanpa Kabupaten') as region_name,
-              coalesce(v.points, 0)::int as points,
+              coalesce(pt.points, 0)::int as points,
               coalesce(v.votes, 0)::int as votes
        from round_schools rs
        join schools s on s.id = rs.school_id
        left join regions rg on rg.id = s.region_id
        left join lateral (
-         select sum(dv.points) as points, count(*) as votes
+         select sum(p.total_points) as points
+         from participants p
+         where p.school_id = rs.school_id and p.status = 'active'
+       ) pt on true
+       left join lateral (
+         select count(*) as votes
          from daily_votes dv
          join participants p on p.id = dv.participant_id
          where dv.round_id = $1 and p.school_id = rs.school_id
@@ -157,10 +165,9 @@ export class RoundsService {
            join schools s on s.id = rs.school_id
            left join regions rg on rg.id = s.region_id
            left join lateral (
-             select sum(dv.points) as points
-             from daily_votes dv
-             join participants p on p.id = dv.participant_id
-             where dv.round_id = $1 and p.school_id = rs.school_id
+             select sum(p.total_points) as points
+             from participants p
+             where p.school_id = rs.school_id and p.status = 'active'
            ) v on true
            where rs.round_id = $1
          )
@@ -186,22 +193,27 @@ export class RoundsService {
     return { ok: true };
   }
 
-  /** Agregasi heatmap per kabupaten (round tertentu / sepanjang event). */
-  heatmap(roundId?: string) {
+  /**
+   * Agregasi heatmap per kabupaten. Poin = jumlah total_points peserta
+   * aktif (vote + quest); votes = jumlah vote masuk.
+   */
+  heatmap() {
     return this.db.query(
       `select rg.id as region_id, rg.name as region_name, rg.code, rg.province,
               count(distinct s.id)::int as schools,
               count(distinct p.id)::int as participants,
-              coalesce(sum(dv.points), 0)::int as points,
-              count(dv.id)::int as votes
+              coalesce(sum(p.total_points), 0)::int as points,
+              coalesce((
+                select count(*) from daily_votes dv
+                join participants p2 on p2.id = dv.participant_id
+                join schools s2 on s2.id = p2.school_id
+                where s2.region_id = rg.id
+              ), 0)::int as votes
        from regions rg
        left join schools s on s.region_id = rg.id
        left join participants p on p.school_id = s.id and p.status = 'active'
-       left join daily_votes dv on dv.participant_id = p.id
-         and ($1::uuid is null or dv.round_id = $1)
        group by rg.id, rg.name, rg.code, rg.province
        order by points desc, rg.name`,
-      [roundId ?? null],
     );
   }
 }
