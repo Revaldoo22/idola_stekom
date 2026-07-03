@@ -10,53 +10,46 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Request } from "express";
-import { diskStorage } from "multer";
-import { extname } from "path";
-import { randomBytes } from "crypto";
-import { existsSync, mkdirSync } from "fs";
+import { memoryStorage } from "multer";
 import { JwtGuard } from "../../common/guards/jwt.guard";
 import { rateLimit } from "../../common/utils/rate-limit";
 import { ipHashFromRequest } from "../../common/utils/server-hash";
+import { StorageService } from "./storage.service";
 
-const UPLOAD_DIR = "uploads";
 const ALLOWED = /\.(jpe?g|png|webp|gif)$/i;
-
-const storage = diskStorage({
-  destination: (_req, _file, cb) => {
-    if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (_req, file, cb) => {
-    const name = randomBytes(12).toString("hex");
-    cb(null, `${name}${extname(file.originalname).toLowerCase()}`);
-  },
-});
 
 const interceptor = () =>
   FileInterceptor("file", {
-    storage,
+    storage: memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => cb(null, ALLOWED.test(file.originalname)),
   });
 
-function toResponse(file?: Express.Multer.File) {
-  if (!file) {
-    throw new BadRequestException(
-      "File tidak valid (jpg/png/webp/gif, maks 5MB).",
-    );
-  }
-  return { ok: true, url: `/uploads/${file.filename}` };
-}
-
-/** Replaces Supabase Storage: images land in ./uploads, served at /uploads/*. */
+/** Upload gambar → StorageService (lokal atau S3-compatible, via env). */
 @Controller()
 export class UploadsController {
+  constructor(private readonly storage: StorageService) {}
+
+  private async store(file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException(
+        "File tidak valid (jpg/png/webp/gif, maks 5MB).",
+      );
+    }
+    const { url } = await this.storage.put(
+      file.buffer,
+      file.originalname,
+      file.mimetype,
+    );
+    return { ok: true, url };
+  }
+
   /** Authenticated upload (admin & participant photos, quest ref images). */
   @Post("upload")
   @UseGuards(JwtGuard)
   @UseInterceptors(interceptor())
   upload(@UploadedFile() file?: Express.Multer.File) {
-    return toResponse(file);
+    return this.store(file);
   }
 
   /** Anonymous voter proof upload — rate-limited per IP instead of auth. */
@@ -70,6 +63,6 @@ export class UploadsController {
         429,
       );
     }
-    return toResponse(file);
+    return this.store(file);
   }
 }
