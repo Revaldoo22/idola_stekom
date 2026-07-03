@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Trophy, Vote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/navbar";
 import { ParticipantGrid } from "@/components/participant-grid";
@@ -8,6 +8,7 @@ import { MaintenanceOverlay } from "@/components/maintenance-overlay";
 import { EventClosedOverlay } from "@/components/event-closed-overlay";
 import { VoterTodayPanel } from "@/components/voter-today";
 import { RoundCountdown } from "@/components/round-countdown";
+import { HowItWorks, StatsStrip } from "@/components/home-sections";
 
 export default function HomePage() {
   return (
@@ -24,28 +25,38 @@ export default function HomePage() {
         ]}
       />
 
-      {/* Hero */}
+      {/* Hero — satu pesan: dukung peserta sekarang */}
       <section className="relative overflow-hidden border-b">
-        <div className="container space-y-6 py-16 text-center md:py-24">
-          <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold text-primary">
-            <GraduationCap className="h-4 w-4" />
-            Universitas STEKOM
+        <div className="container space-y-5 py-14 text-center md:py-20">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold text-primary">
+              <GraduationCap className="h-4 w-4" />
+              Universitas STEKOM
+            </span>
+            <RoundCountdown />
           </div>
-          <RoundCountdown />
+
           <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl">
-            Youth Character Summit
+            Youth Character <span className="text-accent">Summit</span>
           </h1>
           <p className="mx-auto max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Dukung pelajar favoritmu! Pilih peserta di bawah, beri dukungan, dan
-            bantu mereka memenangkan hadiah.
+            Vote tiap hari &amp; kerjakan quest — bantu pelajar favoritmu dan
+            sekolahnya lolos menuju outing class{" "}
+            <strong className="text-foreground">
+              11 hari 8 malam di Bali
+            </strong>
+            .
           </p>
-          <div className="flex flex-wrap justify-center gap-3 pt-2">
+
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
             <Button
               size="lg"
               className="h-12 rounded-full px-7 text-base shadow-lg shadow-primary/25"
               asChild
             >
-              <Link href="/ranking">Peringkat Sementara</Link>
+              <a href="#peserta">
+                <Vote className="h-5 w-5" /> Mulai Dukung Peserta
+              </a>
             </Button>
             <Button
               size="lg"
@@ -53,24 +64,32 @@ export default function HomePage() {
               className="h-12 rounded-full bg-background/60 px-7 text-base backdrop-blur"
               asChild
             >
-              <Link href="/top-voter">Top Voter</Link>
+              <Link href="/ranking">
+                <Trophy className="h-5 w-5" /> Lihat Peringkat
+              </Link>
             </Button>
           </div>
           <PrizeButtons />
+
+          <div className="pt-3">
+            <StatsStrip />
+          </div>
         </div>
       </section>
 
-      {/* All participants */}
+      {/* Cara ikut — hanya tampil sebelum siap vote */}
+      <HowItWorks />
+
+      {/* Peserta */}
       <section id="peserta" className="container scroll-mt-20 py-8">
-        <div className="mb-6">
-          <VoterTodayPanel />
-        </div>
-        <div className="mb-6">
+        <VoterTodayPanel />
+        <div className="mb-6 mt-6">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Daftar Peserta
+            Pilih &amp; Dukung Peserta
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Klik peserta untuk memberi dukungan &amp; mengerjakan quest.
+            Klik peserta untuk vote (+5 harian, +20 favorit) dan mengerjakan
+            quest.
           </p>
         </div>
         <ParticipantGrid />
