@@ -2,15 +2,16 @@ import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { Profile } from "../../database/entities";
+import { Profile, School } from "../../database/entities";
 import { AuthService } from "./auth.service";
+import { GoogleService } from "./google.service";
 import { AuthController } from "./auth.controller";
 import { JwtGuard } from "../../common/guards/jwt.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Profile]),
+    TypeOrmModule.forFeature([Profile, School]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -21,7 +22,7 @@ import { RolesGuard } from "../../common/guards/roles.guard";
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtGuard, RolesGuard],
+  providers: [AuthService, GoogleService, JwtGuard, RolesGuard],
   exports: [JwtModule, JwtGuard, RolesGuard],
 })
 export class AuthModule {}

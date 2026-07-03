@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { GraduationCap, Shield, UserSquare2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GoogleButton } from "./google-button";
 
 export default function LoginChooserPage() {
   return (
@@ -15,7 +17,15 @@ export default function LoginChooserPage() {
           <CardTitle className="pt-2 text-lg">Masuk sebagai</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Button className="w-full" asChild>
+          <Suspense fallback={null}>
+            <GoogleButton />
+          </Suspense>
+          <div className="flex items-center gap-3 py-1">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-xs text-muted-foreground">atau</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <Button className="w-full" variant="outline" asChild>
             <Link href="/login/peserta">
               <UserSquare2 className="h-4 w-4" /> Peserta
             </Link>
@@ -26,7 +36,8 @@ export default function LoginChooserPage() {
             </Link>
           </Button>
           <p className="pt-2 text-center text-xs text-muted-foreground">
-            Pendukung (voter) tidak perlu login — langsung pilih peserta di{" "}
+            Pendukung (voter): masuk dengan Google, lalu lengkapi profil sekali
+            saja. Setelah itu langsung bisa vote di{" "}
             <Link href="/" className="text-primary hover:underline">
               halaman utama
             </Link>
