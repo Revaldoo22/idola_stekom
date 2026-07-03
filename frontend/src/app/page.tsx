@@ -56,12 +56,8 @@ export default function HomePage() {
               <Link href="/top-voter">Top Voter</Link>
             </Button>
           </div>
+          <PrizeButtons />
         </div>
-      </section>
-
-      {/* Prizes */}
-      <section className="container py-12">
-        <PrizeButtons />
       </section>
 
       {/* All participants */}

@@ -39,8 +39,8 @@ function PrizeDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button size="lg" variant={variant} className="h-auto w-full py-4">
-          <Trophy className="h-5 w-5" />
+        <Button size="sm" variant={variant} className="rounded-full">
+          <Trophy className="h-4 w-4" />
           {label}
         </Button>
       </DialogTrigger>
@@ -69,7 +69,7 @@ function PrizeDialog({
 
 export function PrizeButtons() {
   return (
-    <div className="mx-auto grid max-w-2xl gap-4 sm:grid-cols-2">
+    <div className="flex flex-wrap justify-center gap-2">
       <PrizeDialog
         label="Hadiah Voter Terbaik"
         title="Hadiah Voter Terbaik"
