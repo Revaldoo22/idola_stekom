@@ -89,9 +89,11 @@ export default function PublicParticipantPage({
           ? () => toast.error("Kamu tidak bisa mendukung dirimu sendiri.")
           : null;
 
-  // Voter yang sudah login + lengkapi wizard: identitas dari profil,
-  // tidak perlu isi form lagi di tiap vote/quest.
-  const locked = !!me && me.role === "voter" && me.onboarded;
+  // Identitas voter otomatis (tanpa form manual) untuk:
+  //  - voter yang sudah lengkapi wizard onboarding, ATAU
+  //  - peserta (email akun cocok record peserta) → status "peserta".
+  const isParticipant = !!me?.is_participant;
+  const locked = !!me && ((me.role === "voter" && me.onboarded) || isParticipant);
   const followed = !!me?.followed;
   const voter: VoterCtx = locked
     ? {
@@ -100,7 +102,9 @@ export default function PublicParticipantPage({
           name: me.name ?? "",
           phone_number: me.phone_number ?? "",
           email: me.email ?? "",
-          status: (me.status ?? "teman_luar") as VoterFormData["status"],
+          status: (isParticipant
+            ? "peserta"
+            : me.status ?? "teman_luar") as VoterFormData["status"],
           school: me.school ?? "",
           class: (me.class ?? "") as VoterFormData["class"],
         },
@@ -331,11 +335,8 @@ function VoteDialog({
   const pts = isFav ? 20 : 5;
 
   function submit() {
-    const err = validateVoter(voter.data);
-    if (err) {
-      toast.error(err);
-      return;
-    }
+    // Locked = identitas dari akun/record peserta (backend sumber kebenaran),
+    // tak perlu validasi form manual.
     if (locked) {
       // Vote pertama (harian / favorit): wajib follow akun Univ STEKOM dulu (sekali).
       if (!followed) {
@@ -343,6 +344,11 @@ function VoteDialog({
         return;
       }
       void doSubmit();
+      return;
+    }
+    const err = validateVoter(voter.data);
+    if (err) {
+      toast.error(err);
       return;
     }
     confirm({
@@ -589,17 +595,17 @@ function QuestCard({
   const remaining = allOptions.filter((c) => !doneSet.has(c.id));
 
   function submit() {
-    const err = validateVoter(voter.data);
-    if (err) {
-      toast.error(err);
-      return;
-    }
     if (needsContent && !contentId) {
       toast.error("Pilih konten peserta dulu.");
       return;
     }
     if (locked) {
       void doSubmit();
+      return;
+    }
+    const err = validateVoter(voter.data);
+    if (err) {
+      toast.error(err);
       return;
     }
     confirm({
