@@ -55,16 +55,16 @@ Body:
 | `email` | ✅ | **kunci sync** + dasar pencocokan voter |
 | `name` | ✅ | 2–100 |
 | `phone_number` | ✅ | 8–20 digit |
-| `npsn` | — | **paling disarankan** — NPSN sekolah dari data master. Kalau cocok, **kabupaten & provinsi otomatis terisi** (tak perlu region_code). |
-| `school_name` | — | dipakai kalau `npsn` tak dikirim/tak cocok (sekolah dibuat by nama) |
-| `region_code` | — | kode BPS kabupaten — hanya perlu kalau pakai `school_name` & ingin memetakan kabupaten |
+| `npsn` | ✅ | **NPSN sekolah dari data master — WAJIB, 8 digit angka.** Kabupaten & provinsi otomatis terisi dari NPSN. NPSN yang tak ada di master → `409`. |
+| `school_name` | — | opsional, cadangan tampilan saja (wilayah tetap dari NPSN) |
+| `region_code` | — | tidak perlu — wilayah sudah dari NPSN |
 | `external_id` | — | ID kalian (disimpan, opsional) |
 | `description` / `photo_url` / `status` | — | opsional |
 
-> **Cukup kirim `npsn`.** Sistem sudah punya master 36rb+ sekolah beserta
-> kabupaten & provinsinya (kode BPS). Dari NPSN, wilayah langsung diketahui —
-> kalian tak perlu kirim `region_code` maupun nama sekolah. Kirim `school_name`
-> hanya kalau sekolah tak ada di master (mis. sekolah baru).
+> **`npsn` wajib** (8 digit angka). Sistem punya master 36rb+ sekolah beserta
+> kabupaten & provinsinya (kode BPS). Dari NPSN, wilayah langsung terisi —
+> tak perlu `region_code` maupun `school_name`. NPSN yang tidak ada di master
+> ditolak (`409`) supaya kabupaten peserta dijamin akurat.
 
 Respon: `{ "created": true|false, "participant": { ... } }`
 

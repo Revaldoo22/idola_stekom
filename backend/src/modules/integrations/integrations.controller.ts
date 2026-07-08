@@ -150,14 +150,13 @@ class SyncParticipantDto {
   @Matches(/^[0-9+\-\s().]+$/)
   phone_number!: string;
 
-  /** NPSN sekolah (dari data master). Kalau cocok, kabupaten/provinsi otomatis
-   *  ikut — tak perlu region_code. Paling direkomendasikan. */
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  npsn?: string;
+  /** NPSN sekolah (dari data master) — WAJIB. Dari NPSN, kabupaten & provinsi
+   *  otomatis terisi (tak perlu region_code). 8 digit angka. */
+  @IsString({ message: "npsn wajib diisi." })
+  @Matches(/^\d{8}$/, { message: "npsn harus 8 digit angka." })
+  npsn!: string;
 
-  /** Nama sekolah — dipakai kalau npsn tak dikirim/tak cocok (find-or-create). */
+  /** Nama sekolah — cadangan tampilan bila NPSN belum ada di master. */
   @IsOptional()
   @IsString()
   @MinLength(2)
@@ -312,11 +311,16 @@ export class IntegrationsController {
   async syncParticipant(@Body() dto: SyncParticipantDto) {
     const phone = normalizePhone(dto.phone_number);
     const email = dto.email.trim().toLowerCase();
-    const school = await this.resolveSchool({
-      npsn: dto.npsn,
-      name: dto.school_name,
-      regionCode: dto.region_code,
-    });
+
+    // NPSN wajib cocok sekolah master → kabupaten/provinsi dijamin terisi.
+    const npsn = dto.npsn.replace(/\D/g, "");
+    const master = await this.db.getRepository(School).findOneBy({ npsn });
+    if (!master) {
+      throw new ConflictException(
+        `NPSN ${dto.npsn} tidak ditemukan di data master sekolah.`,
+      );
+    }
+    const school = master;
 
     // Kunci: email peserta. Adopsi peserta lama by nomor kalau email belum ada.
     let participant = await this.participants.findOneBy({ email });
