@@ -259,22 +259,44 @@ export class IntegrationsController {
     name?: string;
     regionCode?: string;
   }) {
-    // 1. by NPSN — sekolah master, region sudah ikut.
-    if (opts.npsn?.trim()) {
+    // 1. by NPSN — sekolah master, region sudah ikut. NPSN dinormalisasi
+    // (buang non-digit) agar spasi/format kecil tak bikin gagal cocok.
+    const npsn = (opts.npsn ?? "").replace(/\D/g, "");
+    if (npsn) {
       const master = await this.db
         .getRepository(School)
-        .findOneBy({ npsn: opts.npsn.trim() });
+        .findOneBy({ npsn });
       if (master) return master;
     }
-    // 2. by nama (find-or-create) + petakan region opsional.
+    // 2. by nama (find-or-create) + petakan region.
     const name = (opts.name ?? "").trim();
     if (!name) return null;
     const school = await this.schools.createOrGet({ name });
-    if (opts.regionCode && !school.regionId) {
-      const region = await this.regions.findOneBy({ code: opts.regionCode });
-      if (region) {
-        school.regionId = region.id;
-        await this.db.getRepository("schools").save(school);
+
+    // Jaring pengaman region kalau sekolah (baru/lama) belum punya region:
+    if (!school.regionId) {
+      let regionId: string | null = null;
+      // a. dari regionCode (kode BPS) bila dikirim.
+      if (opts.regionCode) {
+        const region = await this.regions.findOneBy({ code: opts.regionCode });
+        regionId = region?.id ?? null;
+      }
+      // b. warisi region dari sekolah master yang namanya cocok (NPSN salah/
+      //    kosong tapi nama ada di master) — supaya kabupaten tetap terisi.
+      if (!regionId) {
+        const rows = (await this.db.query(
+          `select region_id from schools
+             where npsn is not null and region_id is not null
+               and upper(regexp_replace(name, '\\s+', ' ', 'g'))
+                 = upper(regexp_replace($1, '\\s+', ' ', 'g'))
+             limit 1`,
+          [name],
+        )) as { region_id: string }[];
+        regionId = rows[0]?.region_id ?? null;
+      }
+      if (regionId) {
+        school.regionId = regionId;
+        await this.db.getRepository(School).save(school);
       }
     }
     return school;
