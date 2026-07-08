@@ -147,7 +147,42 @@ Respon (dua-duanya struktur sama; by-email menambah `participant` + `contents`):
 
 ---
 
-## 4. Sekolah & Kabupaten (opsional)
+## 4. Leaderboard (papan peringkat)
+
+Untuk ditampilkan di web pendaftaran. Semua menerima query `?limit=` (default
+50, maks 200). Respon: `{ "count": N, "leaderboard": [ ... ] }` — sudah terurut,
+tiap item punya `position`.
+
+**GET** `/leaderboard/participants` — peringkat peserta by total poin (nasional).
+
+```json
+{ "position": 1, "id": "…", "name": "Dimas Rahayu", "total_points": 1345,
+  "school_name": "SMA Negeri 1 Semarang", "regency_name": "Kota Semarang", "voters": 147 }
+```
+
+**GET** `/leaderboard/schools` — peringkat sekolah by akumulasi poin pesertanya.
+
+```json
+{ "position": 1, "id": "…", "school_name": "SMA Negeri 1 Semarang",
+  "regency_name": "Kota Semarang", "participants": 12, "total_points": 4820 }
+```
+
+**GET** `/leaderboard/voters` — peringkat voter/pendukung by skor (vote + quest).
+
+```json
+{ "position": 1, "voter_name": "Zahra Utami", "school_name": "",
+  "votes": 23, "quests": 0, "score": 235 }
+```
+
+```bash
+curl "$BASE/leaderboard/participants?limit=10" -H "X-Api-Key: $KEY"
+curl "$BASE/leaderboard/schools?limit=10"      -H "X-Api-Key: $KEY"
+curl "$BASE/leaderboard/voters?limit=10"       -H "X-Api-Key: $KEY"
+```
+
+---
+
+## 5. Sekolah & Kabupaten (opsional)
 
 Biasanya **tak perlu** — cukup kirim `npsn` di sync peserta. Endpoint ini hanya
 kalau kalian mengelola sekolah/wilayah secara terpisah.

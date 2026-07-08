@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -493,6 +494,91 @@ export class IntegrationsController {
         national: { position: rank.nat, total: rank.nat_total },
       },
     };
+  }
+
+  // ── Leaderboard (untuk ditampilkan di web pendaftaran) ──────────────
+  private clampLimit(raw?: string) {
+    const n = Number(raw ?? 50);
+    return Number.isFinite(n) ? Math.min(Math.max(Math.trunc(n), 1), 200) : 50;
+  }
+
+  /** Peringkat peserta by total poin (nasional). */
+  @Get("leaderboard/participants")
+  async leaderboardParticipants(@Query("limit") limit?: string) {
+    const rows = (await this.db.query(
+      `select
+         row_number() over (order by p.total_points desc, p.id)::int as position,
+         p.id, p.name, p.total_points::int as total_points,
+         s.name as school_name, r.name as regency_name,
+         (select count(distinct voter_phone) from daily_votes dv
+            where dv.participant_id = p.id)::int as voters
+       from participants p
+       left join schools s on s.id = p.school_id
+       left join regions r on r.id = s.region_id
+       where p.status = 'active'
+       order by p.total_points desc, p.id
+       limit $1`,
+      [this.clampLimit(limit)],
+    )) as unknown[];
+    return { count: rows.length, leaderboard: rows };
+  }
+
+  /** Peringkat sekolah by akumulasi poin peserta-pesertanya. */
+  @Get("leaderboard/schools")
+  async leaderboardSchools(@Query("limit") limit?: string) {
+    const rows = (await this.db.query(
+      `with agg as (
+         select s.id, s.name, r.name as regency_name,
+                count(p.id)::int as participants,
+                coalesce(sum(p.total_points), 0)::int as total_points
+         from schools s
+         join participants p on p.school_id = s.id and p.status = 'active'
+         left join regions r on r.id = s.region_id
+         group by s.id, s.name, r.name
+       )
+       select row_number() over (order by total_points desc, name)::int as position,
+              id, name as school_name, regency_name, participants, total_points
+       from agg
+       order by total_points desc, name
+       limit $1`,
+      [this.clampLimit(limit)],
+    )) as unknown[];
+    return { count: rows.length, leaderboard: rows };
+  }
+
+  /** Peringkat voter/pendukung by skor (vote + quest). */
+  @Get("leaderboard/voters")
+  async leaderboardVoters(@Query("limit") limit?: string) {
+    const rows = (await this.db.query(
+      `with v as (
+         select voter_phone, max(voter_name) as nm, max(voter_school) as school,
+                count(*) as votes, coalesce(sum(points), 0) as pts
+         from daily_votes where voter_phone is not null group by voter_phone
+       ),
+       q as (
+         select s.voter_phone, max(s.voter_name) as nm,
+                count(*) as quests, coalesce(sum(qu.point), 0) as quest_points
+         from submissions s join quests qu on qu.id = s.quest_id
+         where s.status = 'approved' and s.voter_phone is not null
+         group by s.voter_phone
+       ),
+       merged as (
+         select coalesce(v.nm, q.nm, v.voter_phone, q.voter_phone) as voter_name,
+                coalesce(v.school, '') as school_name,
+                coalesce(v.votes, 0)::int as votes,
+                coalesce(q.quests, 0)::int as quests,
+                (coalesce(v.pts, 0) + coalesce(q.quest_points, 0))::int as score
+         from v full outer join q on q.voter_phone = v.voter_phone
+       )
+       select row_number() over (order by score desc)::int as position,
+              voter_name, school_name, votes, quests, score
+       from merged
+       where votes > 0 or quests > 0
+       order by score desc
+       limit $1`,
+      [this.clampLimit(limit)],
+    )) as unknown[];
+    return { count: rows.length, leaderboard: rows };
   }
 
   /** Upsert peserta by nomor WA (dipertahankan; kunci = nomor). */
