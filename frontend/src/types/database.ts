@@ -139,7 +139,13 @@ export interface VoterGrowthRow {
 
 // Joined view used in UI lists
 export type ParticipantWithSchool = Participant & {
-  schools: Pick<School, "id" | "name"> | null;
+  schools:
+    | (Pick<School, "id" | "name"> & {
+        region_id?: string | null;
+        kabupaten?: string | null;
+        provinsi?: string | null;
+      })
+    | null;
   // Only readable by admin (RLS); the participant's login phone number.
   profiles?: { phone_number: string } | null;
 };

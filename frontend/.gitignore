@@ -3,3 +3,8 @@ node_modules
 .next-build
 .env*.local
 *.log
+*.tsbuildinfo
+next-env.d.ts
+
+.vercel
+tsconfig.tsbuildinfo

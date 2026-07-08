@@ -10,8 +10,14 @@ import { DataSource } from "typeorm";
 export class PublicService {
   constructor(private readonly db: DataSource) {}
 
+  /** Hanya sekolah yang punya peserta (untuk dropdown/filter). Master 37rb+
+   *  hanya lewat searchSchools (wizard). */
   schools() {
-    return this.db.query(`select * from schools order by name`);
+    return this.db.query(
+      `select s.* from schools s
+       where exists (select 1 from participants p where p.school_id = s.id)
+       order by s.name`,
+    );
   }
 
   schoolsWithParticipants() {
@@ -22,14 +28,46 @@ export class PublicService {
       order by s.name`);
   }
 
+  /** Cari sekolah (wizard voter): filter wilayah + keyword. Limit 50. */
+  searchSchools(f: {
+    q?: string;
+    regencyCode?: string;
+    districtCode?: string;
+  }) {
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (f.districtCode) {
+      params.push(f.districtCode);
+      where.push(`s.district_code = $${params.length}`);
+    } else if (f.regencyCode) {
+      params.push(f.regencyCode);
+      where.push(`s.regency_code = $${params.length}`);
+    }
+    if (f.q) {
+      params.push(`%${f.q}%`);
+      where.push(`(s.name ilike $${params.length} or s.npsn ilike $${params.length})`);
+    }
+    const clause = where.length ? `where ${where.join(" and ")}` : "";
+    return this.db.query(
+      `select id, name, npsn, jenjang, regency_code, district_code
+       from schools s ${clause}
+       order by s.name limit 50`,
+      params,
+    );
+  }
+
   participants(schoolId?: string) {
     return this.db.query(
       `select p.*,
               case when s.id is null then null
                    else json_build_object('id', s.id, 'name', s.name,
-                                          'region_id', s.region_id) end as schools
+                                          'region_id', s.region_id,
+                                          'kabupaten', reg.name,
+                                          'provinsi', prov.name) end as schools
        from participants p
        left join schools s on s.id = p.school_id
+       left join regions reg on reg.id = s.region_id
+       left join regions prov on prov.id = reg.parent_id
        where ($1::uuid is null or p.school_id = $1)
        order by p.total_points desc`,
       [schoolId ?? null],

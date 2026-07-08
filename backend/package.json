@@ -1,14 +1,17 @@
 {
-  "name": "idola-stekom-api",
+  "name": "ycs-voting-api",
   "version": "0.1.0",
-  "description": "NestJS backend for idola-stekom (voting FKP)",
+  "description": "NestJS backend for Youth Character Summit (YCS) voting",
   "private": true,
   "scripts": {
     "build": "nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
-    "lint": "eslint \"src/**/*.ts\" --fix",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -19,6 +22,8 @@
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/mapped-types": "^2.1.1",
     "@nestjs/platform-express": "^10.4.15",
+    "@nestjs/schedule": "^6.1.3",
+    "@nestjs/terminus": "^11.1.1",
     "@nestjs/typeorm": "^10.0.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
@@ -30,12 +35,17 @@
     "typeorm": "^0.3.20"
   },
   "devDependencies": {
+    "@eslint/js": "^9.18.0",
     "@nestjs/cli": "^10.4.9",
     "@nestjs/schematics": "^10.2.3",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/multer": "^2.2.0",
     "@types/node": "^22.10.5",
-    "typescript": "^5.7.3"
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
   }
 }

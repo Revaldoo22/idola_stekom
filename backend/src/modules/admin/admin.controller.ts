@@ -1,9 +1,7 @@
 import {
   Controller,
-  DefaultValuePipe,
   Get,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Query,
   UseGuards,
@@ -53,16 +51,40 @@ export class AdminController {
 
   @Get("vote-series")
   voteSeries(
-    @Query("days", new DefaultValuePipe(14), ParseIntPipe) days: number,
+    @Query("days") days?: string,
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+    @Query("lifetime") lifetime?: string,
   ) {
-    return this.admin.voteSeries(days);
+    return this.admin.voteSeries({
+      days: days ? parseInt(days, 10) : undefined,
+      from,
+      to,
+      lifetime: lifetime === "true" || lifetime === "1",
+    });
   }
 
   @Get("voter-growth")
   voterGrowth(
-    @Query("days", new DefaultValuePipe(14), ParseIntPipe) days: number,
+    @Query("days") days?: string,
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+    @Query("lifetime") lifetime?: string,
   ) {
-    return this.admin.voterGrowth(days);
+    return this.admin.voterGrowth({
+      days: days ? parseInt(days, 10) : undefined,
+      from,
+      to,
+      lifetime: lifetime === "true" || lifetime === "1",
+    });
+  }
+
+  @Get("leads")
+  leads(
+    @Query("intent") intent?: string,
+    @Query("awareness") awareness?: string,
+  ) {
+    return this.admin.leads({ intent, awareness });
   }
 
   @Get("pmb-insight")

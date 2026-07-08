@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { SelectBox } from "@/components/ui/select-box";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -45,7 +46,6 @@ import { FilterBar, FilterField } from "@/components/filter-bar";
 import {
   useAdminParticipants,
   useParticipantPointLog,
-  useSchools,
 } from "@/lib/queries";
 import { api } from "@/lib/api-client";
 import { compressImage } from "@/lib/image-compress";
@@ -54,15 +54,17 @@ import { formatNumber } from "@/lib/utils";
 import { dateStamp, exportToExcel } from "@/lib/export-excel";
 import type { ParticipantWithSchool } from "@/types/database";
 
-const selectCls =
-  "select-ui";
 
 export default function AdminParticipantsPage() {
   const qc = useQueryClient();
   const confirm = useConfirm();
-  const { data: schools } = useSchools();
   const { data: participants, isLoading, isError, refetch } =
     useAdminParticipants();
+
+  // Sekolah dicari dari DB (master) via endpoint search — bukan load semua.
+  const [schoolHits, setSchoolHits] = React.useState<
+    { id: string; name: string }[]
+  >([]);
 
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<ParticipantWithSchool | null>(null);
@@ -146,13 +148,33 @@ export default function AdminParticipantsPage() {
     },
   });
 
+  // Cari sekolah dari DB (debounce) saat admin mengetik.
   React.useEffect(() => {
-    const match = schools?.find(
-      (s) => s.name.trim().toLowerCase() === schoolText.trim().toLowerCase()
+    const q = schoolText.trim();
+    if (q.length < 2) {
+      setSchoolHits([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      api<{ id: string; name: string }[]>(
+        `/api/public/schools/search?q=${encodeURIComponent(q)}`,
+      )
+        .then(setSchoolHits)
+        .catch(() => setSchoolHits([]));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [schoolText]);
+
+  // Cocokkan input ke sekolah master; kalau tak ada, kirim sebagai nama baru.
+  React.useEffect(() => {
+    const match = schoolHits.find(
+      (s) => s.name.trim().toLowerCase() === schoolText.trim().toLowerCase(),
     );
     form.setValue("school_id", match?.id ?? "", { shouldValidate: true });
-    form.setValue("school_name", match ? "" : schoolText, { shouldValidate: true });
-  }, [schoolText, schools, form]);
+    form.setValue("school_name", match ? "" : schoolText, {
+      shouldValidate: true,
+    });
+  }, [schoolText, schoolHits, form]);
 
   function openCreate() {
     setEditing(null);
@@ -364,15 +386,15 @@ export default function AdminParticipantsPage() {
           />
         </FilterField>
         <FilterField label="Urutkan">
-          <select
-            className="select-ui"
+          <SelectBox
             value={sort}
-            onChange={(e) => setSort(e.target.value as typeof sort)}
-          >
-            <option value="points_desc">Poin tertinggi</option>
-            <option value="points_asc">Poin terendah</option>
-            <option value="name">Nama A-Z</option>
-          </select>
+            onChange={(v) => setSort(v as typeof sort)}
+            options={[
+              { value: "points_desc", label: "Poin tertinggi" },
+              { value: "points_asc", label: "Poin terendah" },
+              { value: "name", label: "Nama A-Z" },
+            ]}
+          />
         </FilterField>
       </FilterBar>
 
@@ -425,7 +447,14 @@ export default function AdminParticipantsPage() {
                       {p.profiles?.phone_number ?? "-"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {p.schools?.name ?? "-"}
+                      <span>{p.schools?.name ?? "-"}</span>
+                      {(p.schools?.kabupaten || p.schools?.provinsi) && (
+                        <span className="block text-xs">
+                          {[p.schools?.kabupaten, p.schools?.provinsi]
+                            .filter(Boolean)
+                            .join(", ")}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
                       {formatNumber(p.total_points)}
@@ -546,7 +575,7 @@ export default function AdminParticipantsPage() {
                 autoComplete="off"
               />
               <datalist id="school-options">
-                {schools?.map((s) => (
+                {schoolHits.map((s) => (
                   <option key={s.id} value={s.name} />
                 ))}
               </datalist>
@@ -584,16 +613,14 @@ export default function AdminParticipantsPage() {
             {editing && (
               <div className="space-y-1.5">
                 <Label>Status</Label>
-                <select
-                  className={selectCls}
+                <SelectBox
                   value={status}
-                  onChange={(e) =>
-                    setStatus(e.target.value as "active" | "inactive")
-                  }
-                >
-                  <option value="active">Aktif</option>
-                  <option value="inactive">Nonaktif</option>
-                </select>
+                  onChange={(v) => setStatus(v as "active" | "inactive")}
+                  options={[
+                    { value: "active", label: "Aktif" },
+                    { value: "inactive", label: "Nonaktif" },
+                  ]}
+                />
               </div>
             )}
 
@@ -775,8 +802,6 @@ function ParticipantDetailDialog({
   }, [log, sourceFilter, from, to, q]);
 
   const shownPoints = rows.reduce((s, r) => s + r.points, 0);
-  const sel =
-    "select-ui h-8 w-auto pl-2 pr-8 text-xs";
 
   return (
     <Dialog open={!!participant} onOpenChange={(o) => !o && onClose()}>
@@ -797,18 +822,17 @@ function ParticipantDetailDialog({
             onChange={(e) => setSearch(e.target.value)}
             className="h-8 w-full sm:w-40"
           />
-          <select
-            className={sel}
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-          >
-            <option value="">Semua sumber</option>
-            {sources.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <div className="w-40">
+            <SelectBox
+              value={sourceFilter}
+              onChange={setSourceFilter}
+              placeholder="Semua sumber"
+              options={[
+                { value: "", label: "Semua sumber" },
+                ...sources.map((s) => ({ value: s, label: s })),
+              ]}
+            />
+          </div>
           <Input
             type="date"
             value={from}
@@ -935,14 +959,16 @@ function ContentsDialog({
         </DialogHeader>
         <div className="space-y-3">
           <div className="flex gap-2">
-            <select
-              className="select-ui w-36"
-              value={kind}
-              onChange={(e) => setKind(e.target.value as "engage" | "sound")}
-            >
-              <option value="engage">Engage</option>
-              <option value="sound">Sound</option>
-            </select>
+            <div className="w-36">
+              <SelectBox
+                value={kind}
+                onChange={(v) => setKind(v as "engage" | "sound")}
+                options={[
+                  { value: "engage", label: "Engage" },
+                  { value: "sound", label: "Sound" },
+                ]}
+              />
+            </div>
             <Input
               placeholder="https://www.instagram.com/p/..."
               value={url}

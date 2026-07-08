@@ -75,13 +75,19 @@ export default function PublicParticipantPage({
 
   // Aksi dukung/quest wajib login sebagai pendukung.
   // gate = null berarti boleh lanjut; selain itu fungsi pengalihan.
+  // Peserta (voter yang email-nya cocok record peserta) TETAP boleh vote
+  // peserta lain — yang diblok hanya vote ke DIRINYA sendiri. Akun admin
+  // sungguhan tidak boleh vote sama sekali.
+  const isSelf = !!me && me.self_participant_id === id;
   const gate: (() => void) | null = !me
     ? () => router.push(`/login?next=/peserta/${id}`)
-    : me.role === "voter" && !me.onboarded
-      ? () => router.push("/onboarding")
-      : me.role !== "voter"
-        ? () => toast.error("Akun admin/peserta tidak bisa memberi dukungan.")
-        : null;
+    : me.role === "admin"
+      ? () => toast.error("Akun admin tidak bisa memberi dukungan.")
+      : me.role === "voter" && !me.onboarded
+        ? () => router.push("/onboarding")
+        : isSelf
+          ? () => toast.error("Kamu tidak bisa mendukung dirimu sendiri.")
+          : null;
 
   // Voter yang sudah login + lengkapi wizard: identitas dari profil,
   // tidak perlu isi form lagi di tiap vote/quest.
@@ -170,6 +176,17 @@ export default function PublicParticipantPage({
                     <p className="text-sm text-muted-foreground">
                       {participant.schools?.name}
                     </p>
+                    {(participant.schools?.kabupaten ||
+                      participant.schools?.provinsi) && (
+                      <p className="text-xs text-muted-foreground">
+                        {[
+                          participant.schools?.kabupaten,
+                          participant.schools?.provinsi,
+                        ]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </p>
+                    )}
                   </div>
                   <Badge variant="accent" className="shrink-0">
                     {formatNumber(participant.total_points)} poin
@@ -256,7 +273,7 @@ function validateVoter(data: VoterFormData): string | null {
 function ShareButton({ name }: { name: string }) {
   async function share() {
     const url = typeof window !== "undefined" ? window.location.href : "";
-    const text = `Dukung ${name} di Youth Character Summit STEKOM! 🔥`;
+    const text = `Dukung ${name} di Youth Character Summit Universitas STEKOM! 🔥`;
     if (navigator.share) {
       try {
         await navigator.share({ title: name, text, url });
@@ -320,8 +337,8 @@ function VoteDialog({
       return;
     }
     if (locked) {
-      // Vote harian pertama: wajib follow akun Univ STEKOM dulu (sekali).
-      if (kind === "daily5" && !followed) {
+      // Vote pertama (harian / favorit): wajib follow akun Univ STEKOM dulu (sekali).
+      if (!followed) {
         setShowFollow(true);
         return;
       }
@@ -437,7 +454,7 @@ function VoteDialog({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Instagram STEKOM
+                Instagram Universitas STEKOM
               </a>
             </Button>
             <Button variant="outline" asChild>
@@ -446,7 +463,7 @@ function VoteDialog({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                TikTok STEKOM
+                TikTok Universitas STEKOM
               </a>
             </Button>
           </div>
@@ -458,7 +475,7 @@ function VoteDialog({
               onChange={(e) => setFollowProof(e.target.files?.[0] ?? null)}
             />
             <p className="text-xs text-muted-foreground">
-              Screenshot profil STEKOM yang menunjukkan kamu sudah follow.
+              Screenshot profil Universitas STEKOM yang menunjukkan kamu sudah follow.
             </p>
           </div>
           <Button

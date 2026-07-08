@@ -7,6 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from "class-validator";
+// region ditentukan dari kode BPS kabupaten (regency_code) sekolah terpilih.
 
 export class OnboardingDto {
   @IsString()
@@ -30,17 +31,34 @@ export class OnboardingDto {
   @MaxLength(150)
   school_name?: string;
 
-  @IsIn(["10", "11", "12", "alumni"], { message: "Pilih kelas" })
-  class!: string;
+  /** Kelas: wajib untuk siswa (10/11/12/alumni), bebas/opsional utk guru/keluarga. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  class?: string;
 
   @IsIn(["teman_sekolah", "guru", "keluarga", "teman_luar"], {
     message: "Pilih status",
   })
   status!: string;
 
-  @IsUUID(undefined, { message: "Pilih kabupaten" })
-  region_id!: string;
+  /** Kode BPS kabupaten (regency) asal — dari sekolah terpilih. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  region_code?: string;
 
   @IsIn(["ya", "tidak", "ragu"], { message: "Pilih niat kuliah" })
   college_intent!: "ya" | "tidak" | "ragu";
+
+  // ---- Survey PMB ----
+  @IsOptional()
+  @IsIn(["belum_tahu", "pernah_dengar", "sudah_minat"])
+  stekom_awareness?: string;
+
+  /** Sumber tahu STEKOM — diisi bila awareness = pernah_dengar / sudah_minat. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  stekom_source?: string;
 }

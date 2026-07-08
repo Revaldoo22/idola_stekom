@@ -37,7 +37,8 @@ export class AdminService {
   async stats() {
     const rows = await this.db.query(`
       select
-        (select count(*) from schools)::int                          as total_schools,
+        (select count(distinct school_id) from participants
+          where school_id is not null)::int                          as total_schools,
         (select count(*) from participants)::int                     as total_participants,
         (select count(distinct voter_phone) from daily_votes
           where voter_phone is not null)::int                        as total_voters,
@@ -46,28 +47,97 @@ export class AdminService {
     return rows[0];
   }
 
-  voteSeries(days = 14) {
-    const clamped = Math.min(Math.max(days, 1), 90);
+  /**
+   * Rentang tanggal untuk chart. Prioritas: from/to eksplisit → lifetime
+   * (dari vote pertama) → N hari terakhir. Batas ≤ 400 hari agar chart wajar.
+   */
+  private async resolveRange(opts: {
+    from?: string;
+    to?: string;
+    days?: number;
+    lifetime?: boolean;
+  }): Promise<{ from: string; to: string }> {
+    const to = opts.to ?? new Date().toISOString().slice(0, 10);
+    if (opts.from) return { from: opts.from, to };
+    if (opts.lifetime) {
+      const r = await this.db.query(
+        `select to_char(min(vote_date), 'YYYY-MM-DD') as f from daily_votes`,
+      );
+      const from = r[0]?.f ?? to;
+      return { from, to };
+    }
+    const days = Math.min(Math.max(opts.days ?? 14, 1), 400);
+    const d = new Date(to);
+    d.setDate(d.getDate() - (days - 1));
+    return { from: d.toISOString().slice(0, 10), to };
+  }
+
+  private clampSpan(from: string, to: string): { from: string; to: string } {
+    // Cegah generate_series raksasa: maksimum 400 hari.
+    const f = new Date(from);
+    const t = new Date(to);
+    const span = Math.round((+t - +f) / 86400000);
+    if (span > 400) f.setTime(+t - 400 * 86400000);
+    return { from: f.toISOString().slice(0, 10), to };
+  }
+
+  async voteSeries(opts: {
+    from?: string;
+    to?: string;
+    days?: number;
+    lifetime?: boolean;
+  }) {
+    const rng = await this.resolveRange(opts);
+    const r = this.clampSpan(rng.from, rng.to);
     return this.db.query(
       `select to_char(d::date, 'YYYY-MM-DD') as day,
               coalesce((select count(*) from daily_votes dv
                         where dv.vote_date = d::date), 0)::int as votes
-       from generate_series(current_date - ($1::int - 1), current_date, interval '1 day') d
+       from generate_series($1::date, $2::date, interval '1 day') d
        order by d`,
-      [clamped],
+      [r.from, r.to],
     );
   }
 
-  voterGrowth(days = 14) {
-    const clamped = Math.min(Math.max(days, 1), 90);
+  async voterGrowth(opts: {
+    from?: string;
+    to?: string;
+    days?: number;
+    lifetime?: boolean;
+  }) {
+    const rng = await this.resolveRange(opts);
+    const r = this.clampSpan(rng.from, rng.to);
     return this.db.query(
       `select to_char(d::date, 'YYYY-MM-DD') as day,
               (select count(distinct voter_phone) from daily_votes
                where voter_phone is not null
                  and created_at::date <= d::date)::int as cumulative
-       from generate_series(current_date - ($1::int - 1), current_date, interval '1 day') d
+       from generate_series($1::date, $2::date, interval '1 day') d
        order by d`,
-      [clamped],
+      [r.from, r.to],
+    );
+  }
+
+  /**
+   * Leads PMB: semua voter yang sudah onboarding (profil + survey), untuk
+   * ditindaklanjuti tim PMB. Filter opsional niat kuliah & awareness.
+   */
+  async leads(f: { intent?: string; awareness?: string }) {
+    return this.db.query(
+      `select pr.name, pr.phone_number, pr.email,
+              sc.name as school_name, pr.voter_class, pr.voter_status,
+              reg.name as kabupaten, prov.name as provinsi,
+              pr.college_intent, pr.stekom_awareness, pr.stekom_source,
+              pr.created_at
+       from profiles pr
+       left join schools sc on sc.id = pr.school_id
+       left join regions reg on reg.id = pr.region_id
+       left join regions prov on prov.id = reg.parent_id
+       where pr.role = 'voter' and pr.onboarded = true
+         and ($1::text is null or pr.college_intent = $1)
+         and ($2::text is null or pr.stekom_awareness = $2)
+       order by pr.created_at desc`,
+      [f.intent || null, f.awareness || null],
     );
   }
 
@@ -114,19 +184,47 @@ export class AdminService {
         and ($3::date is null or s.created_at::date <= $3)
       group by s.voter_phone
     ),
-    combined as (
+    -- Voter yang sudah daftar (onboarded) — ikut walau belum vote/quest.
+    -- Hanya relevan saat TIDAK memfilter per peserta ($1 null).
+    prof as (
+      select pr.phone_number as voter_phone, pr.name as nm, pr.email as em,
+             pr.voter_status as st, sc.name as sch, pr.voter_class as cls,
+             pr.created_at as first_c, pr.created_at as last_c
+      from profiles pr
+      left join schools sc on sc.id = pr.school_id
+      where pr.role = 'voter' and pr.onboarded = true
+        and pr.phone_number is not null
+        and $1::uuid is null
+        and ($2::date is null or pr.created_at::date >= $2)
+        and ($3::date is null or pr.created_at::date <= $3)
+    ),
+    va as (
       select coalesce(v.voter_phone, q.voter_phone) as voter_phone,
-             coalesce(v.nm, q.nm, v.voter_phone, q.voter_phone) as voter_name,
-             coalesce(v.em, q.em) as voter_email,
-             coalesce(v.st, q.st) as voter_status,
-             coalesce(v.sch, q.sch) as voter_school,
-             coalesce(v.cls, q.cls) as voter_class,
+             coalesce(v.nm, q.nm) as nm,
+             coalesce(v.em, q.em) as em,
+             coalesce(v.st, q.st) as st,
+             coalesce(v.sch, q.sch) as sch,
+             coalesce(v.cls, q.cls) as cls,
              coalesce(v.votes, 0) as votes,
              coalesce(q.quests, 0) as quests,
              coalesce(v.pts, 0) + coalesce(q.pts, 0) as points,
-             least(v.first_c, q.first_c) as first_seen,
-             greatest(v.last_c, q.last_c) as last_seen
+             least(v.first_c, q.first_c) as first_c,
+             greatest(v.last_c, q.last_c) as last_c
       from v full outer join q on q.voter_phone = v.voter_phone
+    ),
+    combined as (
+      select coalesce(va.voter_phone, prof.voter_phone) as voter_phone,
+             coalesce(va.nm, prof.nm, va.voter_phone, prof.voter_phone) as voter_name,
+             coalesce(va.em, prof.em) as voter_email,
+             coalesce(va.st, prof.st) as voter_status,
+             coalesce(va.sch, prof.sch) as voter_school,
+             coalesce(va.cls, prof.cls) as voter_class,
+             coalesce(va.votes, 0) as votes,
+             coalesce(va.quests, 0) as quests,
+             coalesce(va.points, 0) as points,
+             coalesce(va.first_c, prof.first_c) as first_seen,
+             coalesce(va.last_c, prof.last_c) as last_seen
+      from va full outer join prof on prof.voter_phone = va.voter_phone
     ),
     enriched as (
       select c.*, rgn.name as region, pr.college_intent

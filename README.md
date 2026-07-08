@@ -1,7 +1,14 @@
-# Idola STEKOM — Voting FKP (Nest + Next)
+# YCS — Youth Character Summit Voting (Nest + Next)
 
-Rewrite backend voting FKP: **NestJS API** (own DB + auth) + **Next.js admin dashboard** (TanStack Query).
+Platform voting Youth Character Summit (YCS): **NestJS API** (own DB + auth) + **Next.js admin dashboard** (TanStack Query).
 DB belum final — TypeORM + Postgres dipakai sebagai default, gampang tuker nanti.
+
+**Repo (push terpisah):**
+
+| Folder      | Repo GitHub          | package name        |
+|-------------|----------------------|---------------------|
+| `backend/`  | `ycs-voting-api`     | `ycs-voting-api`    |
+| `frontend/` | `ycs-voting-web`     | `ycs-voting-web`    |
 
 ## Struktur
 

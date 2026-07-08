@@ -24,10 +24,13 @@ import type {
   VoterGrowthRow,
 } from "@/types/database";
 
-const qs = (params: Record<string, string | number | undefined | null>) => {
+const qs = (
+  params: Record<string, string | number | boolean | undefined | null>,
+) => {
   const search = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== "") search.set(k, String(v));
+    if (v !== undefined && v !== null && v !== "" && v !== false)
+      search.set(k, String(v));
   }
   const s = search.toString();
   return s ? `?${s}` : "";
@@ -50,6 +53,10 @@ export type MyProfile = {
   college_intent: "ya" | "tidak" | "ragu" | null;
   onboarded: boolean;
   followed: boolean;
+  /** Voter ini juga terdaftar sebagai peserta (email cocok). */
+  is_participant: boolean;
+  /** ID peserta miliknya sendiri (tak boleh vote ini). */
+  self_participant_id: string | null;
 };
 
 export function useMyProfile() {
@@ -468,19 +475,26 @@ export function useAdminStats() {
   });
 }
 
-export function useDailyVoteSeries(days = 14) {
+export type SeriesRange = {
+  days?: number;
+  from?: string;
+  to?: string;
+  lifetime?: boolean;
+};
+
+export function useDailyVoteSeries(range: SeriesRange = { days: 14 }) {
   return useQuery({
-    queryKey: ["daily-vote-series", days],
+    queryKey: ["daily-vote-series", range],
     queryFn: () =>
-      api<DailyVoteSeriesRow[]>(`/api/admin/vote-series${qs({ days })}`),
+      api<DailyVoteSeriesRow[]>(`/api/admin/vote-series${qs({ ...range })}`),
   });
 }
 
-export function useVoterGrowth(days = 14) {
+export function useVoterGrowth(range: SeriesRange = { days: 14 }) {
   return useQuery({
-    queryKey: ["voter-growth", days],
+    queryKey: ["voter-growth", range],
     queryFn: () =>
-      api<VoterGrowthRow[]>(`/api/admin/voter-growth${qs({ days })}`),
+      api<VoterGrowthRow[]>(`/api/admin/voter-growth${qs({ ...range })}`),
   });
 }
 
@@ -535,8 +549,9 @@ export function useTopVoters(limit = 5) {
 export type Region = {
   id: string;
   name: string;
-  code: string | null;
-  province: string | null;
+  code: string;
+  level?: "province" | "regency" | "district";
+  parent_id?: string | null;
 };
 
 export type Round = {
@@ -545,6 +560,10 @@ export type Round = {
   status: "draft" | "active" | "closed";
   starts_at: string | null;
   ends_at: string | null;
+  scheduled_close_at: string | null;
+  select_mode: "per_region" | "global";
+  sequence: number;
+  top_n: number;
   created_at: string;
   school_count?: number;
   lolos_count?: number;
@@ -557,6 +576,8 @@ export type RoundStanding = {
   status: "active" | "lolos" | "gugur";
   region_id: string | null;
   region_name: string;
+  carry_points: number;
+  round_points: number;
   points: number;
   votes: number;
 };
@@ -565,17 +586,19 @@ export type HeatmapRow = {
   region_id: string;
   region_name: string;
   code: string | null;
-  province: string | null;
+  province_name: string | null;
+  province_code: string | null;
   schools: number;
   participants: number;
   points: number;
   votes: number;
 };
 
+/** Kabupaten/kota (regency) — dipakai filter admin, akun voter, peringkat. */
 export function useRegions() {
   return useQuery({
-    queryKey: ["regions"],
-    queryFn: () => api<Region[]>("/api/public/regions"),
+    queryKey: ["regions", "regency"],
+    queryFn: () => api<Region[]>("/api/public/regions?level=regency"),
   });
 }
 

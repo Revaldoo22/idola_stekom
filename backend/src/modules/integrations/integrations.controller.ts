@@ -1,9 +1,11 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Get,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Put,
   UseGuards,
@@ -11,6 +13,7 @@ import {
 import {
   ArrayMaxSize,
   IsArray,
+  IsEmail,
   IsIn,
   IsOptional,
   IsString,
@@ -28,6 +31,7 @@ import {
   ParticipantContent,
   Profile,
   Region,
+  School,
 } from "../../database/entities";
 import { ApiKeyGuard } from "../../common/guards/api-key.guard";
 import { normalizePhone } from "../../common/utils/normalize";
@@ -69,6 +73,126 @@ class UpsertParticipantDto {
   @IsOptional()
   @IsIn(["active", "inactive"])
   status?: "active" | "inactive";
+}
+
+class ChangePhoneDto {
+  @IsString()
+  @MinLength(8)
+  @MaxLength(20)
+  @Matches(/^[0-9+\-\s().]+$/)
+  new_phone!: string;
+}
+
+/** Update peserta by ID — semua field opsional; hanya yang dikirim diubah. */
+class UpdateParticipantDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(20)
+  @Matches(/^[0-9+\-\s().]+$/)
+  phone_number?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(150)
+  school_name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  region_code?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  photo_url?: string;
+
+  @IsOptional()
+  @IsIn(["active", "inactive"])
+  status?: "active" | "inactive";
+}
+
+/**
+ * Sinkron peserta dari web kedua (master). Di-address pakai EMAIL (kunci
+ * idempoten). Create kalau baru, update kalau email sudah ada. Email juga
+ * dasar pencocokan voter (voter SSO email sama = peserta ini).
+ */
+class SyncParticipantDto {
+  @IsEmail({}, { message: "Email tidak valid" })
+  @MaxLength(150)
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  external_id?: string;
+
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  name!: string;
+
+  @IsString()
+  @MinLength(8)
+  @MaxLength(20)
+  @Matches(/^[0-9+\-\s().]+$/)
+  phone_number!: string;
+
+  /** NPSN sekolah (dari data master). Kalau cocok, kabupaten/provinsi otomatis
+   *  ikut — tak perlu region_code. Paling direkomendasikan. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  npsn?: string;
+
+  /** Nama sekolah — dipakai kalau npsn tak dikirim/tak cocok (find-or-create). */
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(150)
+  school_name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  region_code?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  photo_url?: string;
+
+  @IsOptional()
+  @IsIn(["active", "inactive"])
+  status?: "active" | "inactive";
+}
+
+/** Upsert sekolah by nama (case-insensitive) + petakan kabupaten. */
+class UpsertSchoolDto {
+  @IsString()
+  @MinLength(2)
+  @MaxLength(150)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  region_code?: string;
 }
 
 class ContentItemDto {
@@ -122,25 +246,265 @@ export class IntegrationsController {
     return this.participants.findOneBy({ profileId: profile.id });
   }
 
-  /** Upsert peserta by nomor WA. Balikan { created, participant }. */
-  @Post("participants")
-  async upsert(@Body() dto: UpsertParticipantDto) {
-    const phone = normalizePhone(dto.phone_number);
-
-    // Sekolah find-or-create; kalau ada region_code, petakan kabupatennya.
-    const school = await this.schools.createOrGet({ name: dto.school_name });
-    if (dto.region_code && !school.regionId) {
-      const region = await this.regions.findOneBy({ code: dto.region_code });
+  /**
+   * Resolusi sekolah untuk sync peserta. Prioritas:
+   *   1. `npsn` → cocokkan sekolah master (dari CSV) — region/kabupaten sudah
+   *      terisi otomatis. Paling andal.
+   *   2. `name` → find-or-create by nama; petakan kabupaten via `regionCode`
+   *      kalau dikirim.
+   */
+  private async resolveSchool(opts: {
+    npsn?: string;
+    name?: string;
+    regionCode?: string;
+  }) {
+    // 1. by NPSN — sekolah master, region sudah ikut.
+    if (opts.npsn?.trim()) {
+      const master = await this.db
+        .getRepository(School)
+        .findOneBy({ npsn: opts.npsn.trim() });
+      if (master) return master;
+    }
+    // 2. by nama (find-or-create) + petakan region opsional.
+    const name = (opts.name ?? "").trim();
+    if (!name) return null;
+    const school = await this.schools.createOrGet({ name });
+    if (opts.regionCode && !school.regionId) {
+      const region = await this.regions.findOneBy({ code: opts.regionCode });
       if (region) {
         school.regionId = region.id;
         await this.db.getRepository("schools").save(school);
       }
     }
+    return school;
+  }
+
+  /**
+   * Sinkron peserta dari web kedua (master) by EMAIL.
+   * Web kedua = sumber data; sini replika. Create bila email baru, update
+   * bila email sudah ada. Email juga jadi dasar pencocokan voter (voter SSO
+   * dengan email sama = peserta ini → tak boleh vote dirinya).
+   */
+  @Post("participants/sync")
+  async syncParticipant(@Body() dto: SyncParticipantDto) {
+    const phone = normalizePhone(dto.phone_number);
+    const email = dto.email.trim().toLowerCase();
+    const school = await this.resolveSchool({
+      npsn: dto.npsn,
+      name: dto.school_name,
+      regionCode: dto.region_code,
+    });
+
+    // Kunci: email peserta. Adopsi peserta lama by nomor kalau email belum ada.
+    let participant = await this.participants.findOneBy({ email });
+    if (!participant) {
+      const byPhone = await this.findByPhone(phone);
+      if (byPhone) participant = byPhone;
+    }
+
+    // Nomor WA tak boleh dipakai profil LAIN (selain peserta ini).
+    const phoneClash = await this.profiles.findOneBy({ phoneNumber: phone });
+    if (phoneClash && (!participant || phoneClash.id !== participant.profileId)) {
+      throw new ConflictException("Nomor WhatsApp sudah dipakai akun lain.");
+    }
+    // Email peserta tak boleh == email VOTER lain (bentrok identitas).
+    const emailClash = await this.profiles.findOneBy({ email });
+    if (
+      emailClash &&
+      emailClash.role !== "participant" &&
+      (!participant || emailClash.id !== participant.profileId)
+    ) {
+      throw new ConflictException("Email sudah dipakai akun voter lain.");
+    }
+
+    if (participant) {
+      participant.email = email;
+      if (dto.external_id !== undefined) participant.externalId = dto.external_id;
+      participant.name = dto.name.trim();
+      participant.schoolId = school?.id ?? null;
+      participant.description = dto.description?.trim() || null;
+      if (dto.photo_url !== undefined) participant.photoUrl = dto.photo_url;
+      if (dto.status !== undefined) participant.status = dto.status;
+      const saved = await this.participants.save(participant);
+      if (participant.profileId) {
+        await this.profiles.update(
+          { id: participant.profileId },
+          {
+            name: dto.name.trim(),
+            phoneNumber: phone,
+            email,
+            schoolId: school?.id ?? null,
+          },
+        );
+      }
+      return { created: false, participant: saved };
+    }
+
+    // Peserta baru: profil + participant. Email disimpan di keduanya.
+    const created = await this.db.transaction(async (em) => {
+      const profile = await em.getRepository(Profile).save({
+        name: dto.name.trim(),
+        phoneNumber: phone,
+        email,
+        role: "participant" as const,
+        schoolId: school?.id ?? null,
+      });
+      return em.getRepository(Participant).save({
+        email,
+        externalId: dto.external_id ?? null,
+        profileId: profile.id,
+        name: dto.name.trim(),
+        schoolId: school?.id ?? null,
+        description: dto.description?.trim() || null,
+        photoUrl: dto.photo_url ?? null,
+        status: dto.status ?? ("active" as const),
+      });
+    });
+    return { created: true, participant: created };
+  }
+
+  /** Snapshot peserta by email (verifikasi replikasi). */
+  @Get("participants/by-email/:email")
+  async getByEmail(@Param("email") emailParam: string) {
+    const email = emailParam.trim().toLowerCase();
+    const participant = await this.participants.findOneBy({ email });
+    if (!participant) throw new NotFoundException("Peserta tidak ditemukan.");
+    const contents = await this.contents.findBy({
+      participantId: participant.id,
+    });
+    // Sertakan ringkasan (id link, stats voter/poin, peringkat) — sama seperti
+    // by-name, tapi email jadi kunci yang unik & tak ambigu.
+    const summary = await this.participantSummary(participant.id);
+    return { ...summary, participant, contents };
+  }
+
+  /**
+   * Cari peserta by nama (untuk web kedua bikin link view voting).
+   * Return id (untuk /peserta/{id}), stats akun (voter unik + total poin),
+   * dan peringkat di sekolah / kabupaten / nasional.
+   * Cocokkan case-insensitive; kalau nama ganda → 409 (pakai email/id lain).
+   */
+  @Get("participants/by-name/:name")
+  async getByName(@Param("name") nameParam: string) {
+    const name = nameParam.trim();
+    if (name.length < 2)
+      throw new NotFoundException("Nama terlalu pendek.");
+    const matches = await this.participants
+      .createQueryBuilder("p")
+      .where("lower(p.name) = lower(:name)", { name })
+      .getMany();
+    if (matches.length === 0)
+      throw new NotFoundException("Peserta tidak ditemukan.");
+    if (matches.length > 1)
+      throw new ConflictException(
+        "Nama ini terdaftar lebih dari satu peserta. Gunakan endpoint by-email.",
+      );
+    return this.participantSummary(matches[0].id);
+  }
+
+  /** Ringkasan + peringkat satu peserta by id. Dipakai getByName. */
+  private async participantSummary(participantId: string) {
+    // Stats voter unik (distinct nomor WA) untuk peserta ini.
+    const stats = (
+      (await this.db.query(
+        `select count(distinct voter_phone)::int as voters,
+                count(*)::int as votes
+           from daily_votes where participant_id = $1`,
+        [participantId],
+      )) as { voters: number; votes: number }[]
+    )[0] ?? { voters: 0, votes: 0 };
+
+    // Peringkat: rank by total_points DESC (id sebagai tiebreak deterministik)
+    // di tiga lingkup — nasional, kabupaten (region sekolah), sekolah.
+    const rank = (
+      (await this.db.query(
+        `with ranked as (
+           select p.id, p.name, p.total_points, p.school_id, s.region_id,
+             rank() over (order by p.total_points desc, p.id)::int as nat,
+             rank() over (
+               partition by s.region_id order by p.total_points desc, p.id
+             )::int as reg,
+             rank() over (
+               partition by p.school_id order by p.total_points desc, p.id
+             )::int as sch
+           from participants p
+           left join schools s on s.id = p.school_id
+           where p.status = 'active'
+         ),
+         counts as (
+           select
+             (select count(*) from ranked)::int as nat_total,
+             (select count(*) from ranked r2 where r2.region_id
+                = (select region_id from ranked where id = $1))::int as reg_total,
+             (select count(*) from ranked r3 where r3.school_id
+                = (select school_id from ranked where id = $1))::int as sch_total
+         )
+         select r.name, r.total_points, r.school_id, r.region_id,
+                r.nat, r.reg, r.sch,
+                c.nat_total, c.reg_total, c.sch_total
+           from ranked r, counts c
+          where r.id = $1`,
+        [participantId],
+      )) as {
+        name: string;
+        total_points: number;
+        school_id: string | null;
+        region_id: string | null;
+        nat: number;
+        reg: number;
+        sch: number;
+        nat_total: number;
+        reg_total: number;
+        sch_total: number;
+      }[]
+    )[0];
+
+    if (!rank) throw new NotFoundException("Peserta tidak ditemukan.");
+
+    // Nama sekolah & kabupaten untuk label di web kedua.
+    const loc = (
+      (await this.db.query(
+        `select s.name as school_name, r.name as regency_name
+           from schools s
+           left join regions r on r.id = s.region_id
+          where s.id = $1`,
+        [rank.school_id],
+      )) as { school_name: string; regency_name: string | null }[]
+    )[0];
+
+    return {
+      id: participantId,
+      name: rank.name,
+      view_url: `https://idola.stekom.ac.id/peserta/${participantId}`,
+      school_name: loc?.school_name ?? null,
+      regency_name: loc?.regency_name ?? null,
+      stats: {
+        total_points: rank.total_points,
+        voters: stats.voters,
+        votes: stats.votes,
+      },
+      rank: {
+        school: rank.school_id
+          ? { position: rank.sch, total: rank.sch_total }
+          : null,
+        regency: rank.region_id
+          ? { position: rank.reg, total: rank.reg_total }
+          : null,
+        national: { position: rank.nat, total: rank.nat_total },
+      },
+    };
+  }
+
+  /** Upsert peserta by nomor WA (dipertahankan; kunci = nomor). */
+  @Post("participants")
+  async upsert(@Body() dto: UpsertParticipantDto) {
+    const phone = normalizePhone(dto.phone_number);
+    const school = await this.resolveSchool({ name: dto.school_name, regionCode: dto.region_code });
 
     const existing = await this.findByPhone(phone);
     if (existing) {
       existing.name = dto.name.trim();
-      existing.schoolId = school.id;
+      existing.schoolId = school?.id ?? null;
       if (dto.description !== undefined)
         existing.description = dto.description?.trim() || null;
       if (dto.photo_url !== undefined) existing.photoUrl = dto.photo_url;
@@ -148,7 +512,7 @@ export class IntegrationsController {
       const saved = await this.participants.save(existing);
       await this.profiles.update(
         { phoneNumber: phone },
-        { name: dto.name.trim(), schoolId: school.id },
+        { name: dto.name.trim(), schoolId: school?.id ?? null },
       );
       return { created: false, participant: saved };
     }
@@ -158,12 +522,12 @@ export class IntegrationsController {
         name: dto.name.trim(),
         phoneNumber: phone,
         role: "participant" as const,
-        schoolId: school.id,
+        schoolId: school?.id ?? null,
       });
       return em.getRepository(Participant).save({
         profileId: profile.id,
         name: dto.name.trim(),
-        schoolId: school.id,
+        schoolId: school?.id ?? null,
         description: dto.description?.trim() || null,
         photoUrl: dto.photo_url ?? null,
         status: dto.status ?? ("active" as const),
@@ -183,23 +547,112 @@ export class IntegrationsController {
     return { participant, contents };
   }
 
-  /** Full-sync konten peserta (replace seluruh daftar) — idempoten. */
-  @Put("participants/:phone/contents")
-  async syncContents(
+  /**
+   * Ganti nomor WA peserta. Nomor = identitas login + anti-cheat (self-vote),
+   * jadi diubah di profiles. Nomor baru harus belum dipakai akun lain.
+   */
+  @Patch("participants/:phone/phone")
+  async changePhone(
     @Param("phone") phone: string,
-    @Body() dto: SyncContentsDto,
+    @Body() dto: ChangePhoneDto,
   ) {
-    const participant = await this.findByPhone(phone);
-    if (!participant) throw new NotFoundException("Peserta tidak ditemukan.");
+    const oldPhone = normalizePhone(phone);
+    const newPhone = normalizePhone(dto.new_phone);
 
+    const profile = await this.profiles.findOneBy({
+      phoneNumber: oldPhone,
+      role: "participant",
+    });
+    if (!profile) throw new NotFoundException("Peserta tidak ditemukan.");
+
+    if (newPhone === oldPhone) {
+      return { ok: true, changed: false };
+    }
+
+    // Nomor baru tidak boleh sudah dipakai akun lain (peran apa pun).
+    const taken = await this.profiles.findOneBy({ phoneNumber: newPhone });
+    if (taken) {
+      throw new ConflictException("Nomor WhatsApp baru sudah dipakai akun lain.");
+    }
+
+    profile.phoneNumber = newPhone;
+    await this.profiles.save(profile);
+    return { ok: true, changed: true, phone_number: newPhone };
+  }
+
+  /**
+   * Update peserta by ID (kunci sync andal dari web kedua). Semua field
+   * opsional; nomor WA pun bisa diganti di sini (dicek unik).
+   */
+  @Patch("participants/id/:id")
+  async updateById(
+    @Param("id") id: string,
+    @Body() dto: UpdateParticipantDto,
+  ) {
+    const participant = await this.participants.findOneBy({ id });
+    if (!participant) throw new NotFoundException("Peserta tidak ditemukan.");
+    const profile = participant.profileId
+      ? await this.profiles.findOneBy({ id: participant.profileId })
+      : null;
+
+    // Ganti nomor WA (cek unik lintas akun).
+    if (dto.phone_number !== undefined && profile) {
+      const newPhone = normalizePhone(dto.phone_number);
+      if (newPhone !== profile.phoneNumber) {
+        const taken = await this.profiles.findOneBy({ phoneNumber: newPhone });
+        if (taken) {
+          throw new ConflictException(
+            "Nomor WhatsApp sudah dipakai akun lain.",
+          );
+        }
+        profile.phoneNumber = newPhone;
+      }
+    }
+
+    // Sekolah (find-or-create + petakan kabupaten).
+    if (dto.school_name !== undefined) {
+      const school = await this.resolveSchool({ name: dto.school_name, regionCode: dto.region_code });
+      participant.schoolId = school?.id ?? null;
+      if (profile) profile.schoolId = school?.id ?? null;
+    }
+
+    if (dto.name !== undefined) {
+      participant.name = dto.name.trim();
+      if (profile) profile.name = dto.name.trim();
+    }
+    if (dto.description !== undefined)
+      participant.description = dto.description?.trim() || null;
+    if (dto.photo_url !== undefined) participant.photoUrl = dto.photo_url;
+    if (dto.status !== undefined) participant.status = dto.status;
+
+    if (profile) await this.profiles.save(profile);
+    const saved = await this.participants.save(participant);
+    return { ok: true, participant: saved };
+  }
+
+  /** Daftar kabupaten (untuk web kedua memetakan sekolah ke kabupaten). */
+  @Get("regions")
+  listRegions() {
+    return this.regions.find({ order: { name: "ASC" } });
+  }
+
+  /** Upsert sekolah by nama (case-insensitive) + set kabupaten via kode BPS. */
+  @Post("schools")
+  async upsertSchool(@Body() dto: UpsertSchoolDto) {
+    const school = await this.resolveSchool({ name: dto.name, regionCode: dto.region_code });
+    return { ok: true, school };
+  }
+
+  /** Full-replace konten peserta (dipakai kedua endpoint di bawah). */
+  private async replaceContents(participantId: string, dto: SyncContentsDto) {
     await this.db.transaction(async (em) => {
       await em
         .getRepository(ParticipantContent)
-        .delete({ participantId: participant.id });
+        .delete({ participantId });
       if (dto.contents.length > 0) {
         await em.getRepository(ParticipantContent).insert(
           dto.contents.map((c) => ({
-            participantId: participant.id,
+            participantId,
             kind: c.kind,
             url: c.url.trim(),
             label: c.label?.trim() || null,
@@ -208,5 +661,28 @@ export class IntegrationsController {
       }
     });
     return { ok: true, count: dto.contents.length };
+  }
+
+  /** Sync konten peserta by EMAIL (utama, konsisten dgn sync peserta). */
+  @Put("participants/by-email/:email/contents")
+  async syncContentsByEmail(
+    @Param("email") emailParam: string,
+    @Body() dto: SyncContentsDto,
+  ) {
+    const email = emailParam.trim().toLowerCase();
+    const participant = await this.participants.findOneBy({ email });
+    if (!participant) throw new NotFoundException("Peserta tidak ditemukan.");
+    return this.replaceContents(participant.id, dto);
+  }
+
+  /** (Legacy) Sync konten by nomor WA. */
+  @Put("participants/:phone/contents")
+  async syncContents(
+    @Param("phone") phone: string,
+    @Body() dto: SyncContentsDto,
+  ) {
+    const participant = await this.findByPhone(phone);
+    if (!participant) throw new NotFoundException("Peserta tidak ditemukan.");
+    return this.replaceContents(participant.id, dto);
   }
 }

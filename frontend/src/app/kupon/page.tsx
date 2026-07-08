@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Download, Loader2, Smartphone, Ticket } from "lucide-react";
+import { Download, Smartphone, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
@@ -198,7 +198,7 @@ export default function CouponPage() {
         ) : !coupons || coupons.length === 0 ? (
           <EmptyState
             title="Belum ada kupon"
-            description="Vote peserta favoritmu dan follow akun STEKOM untuk mendapatkan kupon."
+            description="Vote peserta favoritmu dan follow akun Universitas STEKOM untuk mendapatkan kupon."
           />
         ) : (
           <div className="space-y-3">
