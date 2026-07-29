@@ -1,7 +1,12 @@
 export { School } from "./school.entity";
 export { Participant, type ParticipantStatus } from "./participant.entity";
 export { Profile, type Role } from "./profile.entity";
-export { DailyVote, type VoteKind } from "./daily-vote.entity";
+export {
+  DailyVote,
+  type VoteKind,
+  type VoteStatus,
+  type FollowProofs,
+} from "./daily-vote.entity";
 export {
   Quest,
   type QuestStatus,
@@ -15,6 +20,7 @@ export { ParticipantContent } from "./participant-content.entity";
 export { AppSettings } from "./app-settings.entity";
 export { Region } from "./region.entity";
 export { Coupon } from "./coupon.entity";
+export { Notification, type NotificationType } from "./notification.entity";
 export {
   Round,
   RoundSchool,
@@ -33,6 +39,7 @@ import { ParticipantContent } from "./participant-content.entity";
 import { AppSettings } from "./app-settings.entity";
 import { Region } from "./region.entity";
 import { Coupon } from "./coupon.entity";
+import { Notification } from "./notification.entity";
 import { Round, RoundSchool } from "./round.entity";
 
 /** Single registration point — add new entities here once. */
@@ -48,6 +55,7 @@ export const ENTITIES = [
   AppSettings,
   Region,
   Coupon,
+  Notification,
   Round,
   RoundSchool,
 ];

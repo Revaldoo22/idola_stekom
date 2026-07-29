@@ -4,6 +4,7 @@ import { DataSource, Repository } from "typeorm";
 import {
   Coupon,
   DailyVote,
+  FollowProofs,
   Participant,
   Profile,
   School,
@@ -19,6 +20,9 @@ export class VoteError extends ConflictException {
     super(code);
   }
 }
+
+/** Batas jumlah screenshot bukti follow per vote. */
+export const MAX_FOLLOW_PROOFS = 12;
 
 @Injectable()
 export class VotesService {
@@ -71,6 +75,7 @@ export class VotesService {
       if (part?.phone_number) {
         return {
           profile,
+          isParticipant: true,
           phone: part.phone_number.trim(),
           email: profile.email.trim().toLowerCase(),
           fields: {
@@ -93,8 +98,14 @@ export class VotesService {
           .getRepository(School)
           .findOneBy({ id: profile.schoolId })
       : null;
+    // Voter yang email-nya cocok record peserta = peserta juga → skip follow.
+    const asParticipant = (await this.dataSource.query(
+      `select 1 from participants where lower(email) = lower($1) limit 1`,
+      [profile.email],
+    )) as unknown[];
     return {
       profile,
+      isParticipant: asParticipant.length > 0,
       phone: profile.phoneNumber.trim(),
       email: profile.email.trim().toLowerCase(),
       fields: {
@@ -113,12 +124,7 @@ export class VotesService {
    * bukan per peserta). Sekali vote sukses, akun itu tak bisa vote lagi ke
    * peserta manapun. Setiap vote menambah +1 poin ke peserta.
    */
-  async cast(
-    d: CastVoteDto,
-    serverHash: string | null,
-    ipHash: string | null,
-    actorId?: string,
-  ) {
+  async cast(d: CastVoteDto, actorId?: string) {
     const kind = "daily5";
     const points = 1;
 
@@ -148,38 +154,60 @@ export class VotesService {
       throw new VoteError("PHONE_NAME");
     }
 
-    // 1 akun = 1 vote SEUMUR EVENT. Kalau email/WA/device ini sudah pernah
-    // vote (peserta manapun, kapanpun), tolak — tak ada reset harian.
+    // 1 akun = 1 vote SEUMUR EVENT, dikunci by email/WA (bukan device).
+    // Satu HP boleh dipakai beberapa akun berbeda.
     const dup = await this.votes
       .createQueryBuilder("dv")
-      .where(
-        "(dv.device_fingerprint = :fp OR dv.voter_phone = :phone OR dv.voter_email = :email)",
-        { fp: d.fingerprint, phone, email },
-      )
+      .where("(dv.voter_phone = :phone OR dv.voter_email = :email)", {
+        phone,
+        email,
+      })
       .getExists();
     if (dup) throw new VoteError("ALREADYVOTED");
 
-    // IP soft-limit (distinct emails per hashed IP per day).
-    if (ipHash) {
-      const limit = (await this.settings.get()).ipDailyLimit ?? 5;
-      const cnt = await this.votes
-        .createQueryBuilder("dv")
-        .select("COUNT(DISTINCT dv.voter_email)", "c")
-        .where("dv.ip_hash = :ipHash", { ipHash })
-        .andWhere("dv.vote_date = CURRENT_DATE")
-        .getRawOne<{ c: string }>();
-      if (Number(cnt?.c ?? 0) >= limit) throw new VoteError("IPLIMIT");
-    }
+    // Tidak ada batasan by device/IP — dedup murni by email/WA di atas.
 
-    // Gate follow: voter wajib pernah konfirmasi follow akun Universitas
-    // STEKOM sebelum vote apa pun (daily5 & fav20) — cukup SEKALI seumur
-    // event, lintas peserta & lintas jenis.
+    // Gate follow + kupon undian.
+    //  - Voter biasa: wajib follow akun Univ STEKOM (bukti per tugas: IG &
+    //    TikTok). Vote masuk sebagai PENDING — poin & kupon baru diberikan
+    //    setelah admin approve buktinya.
+    //  - PESERTA YCS: vote langsung tanpa follow, TAPI tetap dapat kupon.
     const profile = identity.profile;
     let grantCoupon = false;
-    if (profile && !profile.followedAt) {
+    let needsReview = false;
+    let followProofs: FollowProofs | null = null;
+    if (identity.isParticipant) {
+      // Peserta: vote tanpa follow, tetap dapat kupon. Insert kupon idempoten
+      // (unique per profile+source), jadi aman walau followedAt sudah ter-set.
+      grantCoupon = true;
+    } else if (profile && !profile.followedAt) {
       if (!d.follow_confirmed) throw new VoteError("FOLLOW_REQUIRED");
-      if (!d.follow_proof_url) throw new VoteError("FOLLOW_PROOF_REQUIRED");
-      grantCoupon = true; // follow pertama + vote sukses = kupon undian
+      // Screenshot bukti follow: array URL (bebas, boleh banyak sekaligus).
+      // Kontrak lama (object per tugas / follow_proof_*) tetap diterima.
+      const rawList: unknown[] = Array.isArray(d.follow_proofs)
+        ? d.follow_proofs
+        : [
+            ...Object.values(d.follow_proofs ?? {}),
+            d.follow_proof_ig,
+            d.follow_proof_tiktok,
+            d.follow_proof_url,
+          ];
+      const urls = [
+        ...new Set(
+          rawList.filter(
+            (u): u is string =>
+              typeof u === "string" &&
+              u.length <= 500 &&
+              /^https?:\/\/.+/i.test(u),
+          ),
+        ),
+      ];
+      if (urls.length < 1) throw new VoteError("FOLLOW_PROOF_REQUIRED");
+      if (urls.length > MAX_FOLLOW_PROOFS) {
+        throw new VoteError("FOLLOW_PROOF_TOOMANY");
+      }
+      followProofs = urls;
+      needsReview = true;
     }
 
     // Stempel gelombang aktif (null bila tidak ada round berjalan).
@@ -196,11 +224,12 @@ export class VotesService {
         await em.getRepository(DailyVote).insert({
           participantId: d.participant_id,
           roundId: activeRound?.id ?? null,
-          deviceFingerprint: d.fingerprint,
-          serverHash,
-          ipHash,
+          // device/server/ip tidak dipakai lagi untuk anti-cheat.
           voteKind: kind,
           points,
+          // Perlu review bukti follow → pending; poin ditahan sampai approve.
+          status: needsReview ? "pending" : "approved",
+          followProofs,
           voterName: name.trim(),
           voterPhone: phone,
           voterEmail: email,
@@ -208,11 +237,14 @@ export class VotesService {
           voterSchool: d.school?.trim() || null,
           voterClass: d.class?.trim() || null,
         });
-        await em
-          .getRepository(Participant)
-          .increment({ id: d.participant_id }, "totalPoints", points);
+        if (!needsReview) {
+          await em
+            .getRepository(Participant)
+            .increment({ id: d.participant_id }, "totalPoints", points);
+        }
 
-        // Follow terkonfirmasi: catat + terbitkan kupon undian (sekali).
+        // Terbitkan kupon undian (sekali). Peserta: langsung tanpa follow.
+        // Voter biasa: kupon + followedAt diberikan saat admin APPROVE.
         if (grantCoupon && profile) {
           await em.getRepository(Profile).update(
             { id: profile.id },
@@ -230,12 +262,19 @@ export class VotesService {
             .getRepository(Coupon)
             .createQueryBuilder()
             .insert()
-            .values({ profileId: profile.id, code, source: "follow" })
+            .values({
+              profileId: profile.id,
+              code,
+              source: identity.isParticipant ? "peserta" : "follow",
+            })
             .orIgnore() // unique (profile, source): idempoten saat race
             .execute();
         }
 
-        return em.getRepository(Participant).findOneBy({ id: d.participant_id });
+        const part = await em
+          .getRepository(Participant)
+          .findOneBy({ id: d.participant_id });
+        return { participant: part, pending: needsReview };
       });
     } catch (err) {
       if ((err as { code?: string }).code === "23505") {
