@@ -576,6 +576,8 @@ export type RoundStanding = {
   status: "active" | "lolos" | "gugur";
   region_id: string | null;
   region_name: string;
+  province_id: string | null;
+  province_name: string;
   carry_points: number;
   round_points: number;
   points: number;
@@ -656,6 +658,8 @@ export type VoterToday = {
     vote_kind: "daily5";
     points: number;
     created_at: string;
+    /** pending = bukti follow masih direview admin (poin belum masuk). */
+    status: "pending" | "approved";
     participant_id: string;
     participant_name: string;
   }[];
@@ -736,5 +740,45 @@ export function useMyCoupons(enabled: boolean) {
     queryKey: ["my-coupons"],
     enabled,
     queryFn: () => api<CouponRow[]>("/api/voter/coupons"),
+  });
+}
+
+// --------------------------- Notifications ---------------------------
+export type NotificationRow = {
+  id: string;
+  type: "vote_rejected" | string;
+  title: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+};
+
+export type NotificationsResult = {
+  items: NotificationRow[];
+  unread: number;
+};
+
+export function useMyNotifications(enabled: boolean) {
+  return useQuery({
+    queryKey: ["my-notifications"],
+    enabled,
+    queryFn: () => api<NotificationsResult>("/api/voter/notifications"),
+    // Terasa hidup: cek notifikasi baru berkala.
+    refetchInterval: 30_000,
+  });
+}
+
+/** Tandai notifikasi dibaca. ids kosong = tandai semua. */
+export function useMarkNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids?: string[]) =>
+      api("/api/voter/notifications/read", {
+        method: "PATCH",
+        body: JSON.stringify({ ids: ids ?? [] }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-notifications"] });
+    },
   });
 }

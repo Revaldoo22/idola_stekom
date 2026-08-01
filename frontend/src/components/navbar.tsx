@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { GraduationCap, LogOut, Menu } from "lucide-react";
+import { GraduationCap, HelpCircle, Home, LogOut, Menu } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { AuthNav } from "@/components/auth-nav";
+import { NotificationBell } from "@/components/notification-bell";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useTranslation } from "@/lib/i18n";
 
 export type NavLink = {
   href: string;
@@ -22,14 +25,6 @@ export type NavLink = {
   /** Render as a highlighted blue call-to-action button. */
   cta?: boolean;
 };
-
-/** Menu publik standar — SATU sumber, dipakai semua halaman publik. */
-export const PUBLIC_LINKS: NavLink[] = [
-  { href: "/ranking", label: "Ranking" },
-  { href: "/peringkat-sekolah", label: "Peringkat Sekolah" },
-  { href: "/gelombang", label: "Gelombang" },
-  { href: "/top-voter", label: "Top Voter" },
-];
 
 export function Navbar({
   title,
@@ -40,14 +35,21 @@ export function Navbar({
   links?: NavLink[];
   showLogout?: boolean;
 }) {
+  const t = useTranslation("navbar");
+  // Menu publik standar — SATU sumber, dipakai semua halaman publik.
+  const publicLinks: NavLink[] = [
+    { href: "/", label: t.home, icon: Home },
+    { href: "/ranking", label: t.ranking },
+    { href: "/gelombang", label: t.gelombang },
+  ];
   // Tanpa prop links: halaman publik memakai menu standar (konsisten).
-  const navLinks = links ?? (showLogout ? [] : PUBLIC_LINKS);
+  const navLinks = links ?? (showLogout ? [] : publicLinks);
   const router = useRouter();
   const pathname = usePathname();
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    toast.success("Berhasil keluar.");
+    toast.success(t.logoutSuccess);
     router.push("/login");
     router.refresh();
   }
@@ -129,10 +131,35 @@ export function Navbar({
               onClick={logout}
             >
               <LogOut className="h-4 w-4" />
-              Keluar
+              {t.logout}
             </Button>
           )}
         </nav>
+
+        {/* Panduan: selalu tampak di luar menu — icon tanda tanya di mobile,
+            icon + teks di desktop. */}
+        {!showLogout && (
+          <Link
+            href="/panduan"
+            aria-label={t.panduanTitle}
+            title={t.panduanTitle}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium transition-colors md:px-3",
+              pathname === "/panduan"
+                ? "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <HelpCircle className="h-5 w-5" />
+            <span className="hidden md:inline">{t.panduan}</span>
+          </Link>
+        )}
+
+        {/* Pilih bahasa (halaman publik) */}
+        {!showLogout && <LanguageSwitcher />}
+
+        {/* Lonceng pemberitahuan (voter login, halaman publik) */}
+        {!showLogout && <NotificationBell />}
 
         {/* Login / akun (halaman publik) */}
         {!showLogout && <AuthNav />}
@@ -177,7 +204,7 @@ export function Navbar({
                       className="text-destructive focus:bg-destructive/10"
                     >
                       <LogOut className="h-4 w-4" />
-                      Keluar
+                      {t.logout}
                     </DropdownMenuItem>
                   </>
                 )}

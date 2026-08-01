@@ -10,6 +10,8 @@ import {
   GraduationCap,
   Loader2,
   MapPin,
+  PencilLine,
+  Search,
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +22,8 @@ import { SelectBox } from "@/components/ui/select-box";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api-client";
 import { cn, trackEvent } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
+import type { Dictionary } from "@/lib/i18n/types";
 
 type Me = {
   id: string;
@@ -29,54 +33,12 @@ type Me = {
   onboarded: boolean;
 };
 
-const STEPS = [
-  { title: "Akun", icon: UserRound },
-  { title: "Asal & Status", icon: MapPin },
-  { title: "Survey", icon: ClipboardList },
-];
-
-const STATUS_OPTIONS = [
-  { value: "teman_sekolah", label: "Teman sekolah peserta" },
-  { value: "guru", label: "Guru" },
-  { value: "keluarga", label: "Keluarga peserta" },
-  { value: "teman_luar", label: "Teman di luar sekolah" },
-];
-
-const INTENT_OPTIONS = [
-  { value: "ya", label: "Ya, ada rencana kuliah" },
-  { value: "ragu", label: "Masih ragu / belum tahu" },
-  { value: "tidak", label: "Tidak" },
-];
-
-const AWARENESS_OPTIONS = [
-  { value: "belum_tahu", label: "Belum tahu sama sekali" },
-  { value: "pernah_dengar", label: "Pernah dengar" },
-  { value: "sudah_minat", label: "Sudah tahu & tertarik" },
-];
-
-const SOURCE_OPTIONS = [
-  { value: "instagram", label: "Instagram" },
-  { value: "tiktok", label: "TikTok" },
-  { value: "facebook", label: "Facebook" },
-  { value: "youtube", label: "YouTube" },
-  { value: "whatsapp", label: "WhatsApp / grup WA" },
-  { value: "google", label: "Google / pencarian" },
-  { value: "maps", label: "Google Maps" },
-  { value: "teman", label: "Teman" },
-  { value: "keluarga", label: "Keluarga" },
-  { value: "duta_stekom", label: "Duta Universitas STEKOM" },
-  { value: "pendaftar_ycs", label: "Pendaftar / peserta YCS" },
-  { value: "alumni", label: "Alumni Universitas STEKOM" },
-  { value: "guru_sekolah", label: "Guru / sekolah" },
-  { value: "acara", label: "Acara / pameran / sosialisasi" },
-  { value: "brosur", label: "Brosur / spanduk / baliho" },
-  { value: "di_jalan", label: "Lihat di jalan / gedung kampus" },
-  { value: "radio_tv", label: "Radio / TV" },
-  { value: "koran", label: "Koran / majalah" },
-  { value: "lainnya", label: "Lainnya" },
-];
-
 type ComboItem = { value: string; label: string; hint?: string };
+
+/** Penanda field wajib. */
+function Req() {
+  return <span className="text-destructive">*</span>;
+}
 
 /**
  * Dropdown searchable seragam: ketik untuk cari, klik untuk pilih. Dipakai
@@ -91,10 +53,10 @@ function Combobox({
   disabled,
   onSelect,
   onQuery,
-  emptyText = "Tidak ditemukan.",
+  emptyText,
 }: {
   value: ComboItem | null;
-  label: string;
+  label: React.ReactNode;
   placeholder: string;
   items: ComboItem[];
   disabled?: boolean;
@@ -102,6 +64,7 @@ function Combobox({
   onQuery?: (q: string) => void;
   emptyText?: string;
 }) {
+  const t = useTranslation("onboarding");
   const [q, setQ] = React.useState("");
   const [open, setOpen] = React.useState(false);
 
@@ -131,7 +94,7 @@ function Combobox({
               setOpen(true);
             }}
           >
-            Ganti
+            {t.change}
           </button>
         </div>
       </div>
@@ -177,7 +140,9 @@ function Combobox({
         </div>
       )}
       {open && !disabled && q.trim() && filtered.length === 0 && (
-        <p className="text-xs text-muted-foreground">{emptyText}</p>
+        <p className="text-xs text-muted-foreground">
+          {emptyText ?? t.notFound}
+        </p>
       )}
     </div>
   );
@@ -191,11 +156,69 @@ type SchoolHit = {
   jenjang: string | null;
 };
 
+function buildOptions(t: Dictionary["onboarding"]) {
+  const STEPS = [
+    { title: t.stepAccount, icon: UserRound },
+    { title: t.stepOriginStatus, icon: MapPin },
+    { title: t.stepSurvey, icon: ClipboardList },
+  ];
+  const STATUS_OPTIONS = [
+    { value: "teman_sekolah", label: t.statusSchoolmate },
+    { value: "guru", label: t.statusTeacher },
+    { value: "keluarga", label: t.statusFamily },
+    { value: "teman_luar", label: t.statusOutsideFriend },
+  ];
+  const INTENT_OPTIONS = [
+    { value: "ya", label: t.intentYes },
+    { value: "ragu", label: t.intentUnsure },
+    { value: "tidak", label: t.intentNo },
+  ];
+  const AWARENESS_OPTIONS = [
+    { value: "belum_tahu", label: t.awarenessNone },
+    { value: "pernah_dengar", label: t.awarenessHeard },
+    { value: "sudah_minat", label: t.awarenessInterested },
+  ];
+  const SOURCE_OPTIONS = [
+    { value: "instagram", label: t.sourceInstagram },
+    { value: "tiktok", label: t.sourceTiktok },
+    { value: "facebook", label: t.sourceFacebook },
+    { value: "youtube", label: t.sourceYoutube },
+    { value: "whatsapp", label: t.sourceWhatsapp },
+    { value: "google", label: t.sourceGoogle },
+    { value: "maps", label: t.sourceMaps },
+    { value: "teman", label: t.sourceFriend },
+    { value: "keluarga", label: t.sourceFamily },
+    { value: "duta_stekom", label: t.sourceDutaStekom },
+    { value: "pendaftar_ycs", label: t.sourceYcsRegistrant },
+    { value: "alumni", label: t.sourceAlumni },
+    { value: "guru_sekolah", label: t.sourceTeacherSchool },
+    { value: "acara", label: t.sourceEvent },
+    { value: "brosur", label: t.sourceBrochure },
+    { value: "di_jalan", label: t.sourceStreet },
+    { value: "radio_tv", label: t.sourceRadioTv },
+    { value: "koran", label: t.sourceNewspaper },
+    { value: "lainnya", label: t.sourceOther },
+  ];
+  return { STEPS, STATUS_OPTIONS, INTENT_OPTIONS, AWARENESS_OPTIONS, SOURCE_OPTIONS };
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
+  const t = useTranslation("onboarding");
+  const { STEPS, STATUS_OPTIONS, INTENT_OPTIONS, AWARENESS_OPTIONS, SOURCE_OPTIONS } =
+    buildOptions(t);
   const [me, setMe] = React.useState<Me | null>(null);
   const [step, setStep] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
+
+  // Halaman asal (?next=) — voter yang klik vote sebelum login dikembalikan
+  // ke sana setelah onboarding selesai. Path internal saja (anti open redirect).
+  // Dibaca dari window agar tak perlu Suspense useSearchParams.
+  const [nextPath] = React.useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const n = new URLSearchParams(window.location.search).get("next");
+    return n && n.startsWith("/") && !n.startsWith("//") ? n : null;
+  });
 
   // Form state
   const [name, setName] = React.useState("");
@@ -214,17 +237,19 @@ export default function OnboardingPage() {
   const [schoolQ, setSchoolQ] = React.useState("");
   const [schoolHits, setSchoolHits] = React.useState<SchoolHit[]>([]);
   const [school, setSchool] = React.useState<SchoolHit | null>(null);
-  // Guru/keluarga isi sekolah & kelas manual (opsional).
+  // Guru (wajib) & keluarga (opsional) isi sekolah & kelas manual.
   const [schoolManual, setSchoolManual] = React.useState("");
   const [classManual, setClassManual] = React.useState("");
 
   // teman_sekolah = siswa SMA/SMK/MA → pilih sekolah master + kelas dropdown.
-  // teman_luar bisa SMP dll → sekolah & kelas MANUAL (wajib).
-  // guru/keluarga → sekolah & kelas manual (opsional).
+  // teman_luar (bisa SMP dll) & guru → sekolah & kelas MANUAL (wajib).
+  // keluarga → sekolah & kelas manual (opsional).
   const fromMaster = status === "teman_sekolah";
-  const manualRequired = status === "teman_luar";
-  const manualOptional = status === "guru" || status === "keluarga";
+  const manualRequired = status === "teman_luar" || status === "guru";
+  const manualOptional = status === "keluarga";
   const showManual = manualRequired || manualOptional;
+  // Siswa yang sekolahnya tak ada di dropdown master → boleh ketik manual.
+  const [schoolNotFound, setSchoolNotFound] = React.useState(false);
 
   const DRAFT_KEY = "onboarding_draft";
   const restored = React.useRef(false);
@@ -278,13 +303,15 @@ export default function OnboardingPage() {
       try {
         const { user } = await api<{ user: Me }>("/api/auth/me");
         if (user.onboarded) {
-          router.replace("/");
+          router.replace(nextPath ?? "/");
           return;
         }
         setMe(user);
         setName(user.name ?? "");
       } catch {
-        router.replace("/login");
+        router.replace(
+          nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login",
+        );
       }
       try {
         setProvinces(
@@ -294,7 +321,7 @@ export default function OnboardingPage() {
         /* dropdown kosong tidak fatal */
       }
     })();
-  }, [router]);
+  }, [router, nextPath]);
 
   // Provinsi berubah → muat kabupaten. Reset pilihan di bawahnya HANYA saat
   // user benar-benar ganti provinsi (bukan saat restore draft awal).
@@ -332,26 +359,30 @@ export default function OnboardingPage() {
 
   function validateStep(s: number): string | null {
     if (s === 0) {
-      if (name.trim().length < 2) return "Nama minimal 2 karakter.";
+      if (name.trim().length < 2) return t.errNameMin;
       if (!/^[0-9+\-\s().]{8,20}$/.test(phone.trim()))
-        return "Nomor WhatsApp tidak valid (min. 8 digit).";
+        return t.errPhoneInvalid;
     }
     if (s === 1) {
-      if (!provinceCode) return "Pilih provinsi.";
-      if (!regencyCode) return "Pilih kabupaten/kota.";
-      if (!status) return "Pilih statusmu.";
+      if (!provinceCode) return t.errChooseProvince;
+      if (!regencyCode) return t.errChooseRegency;
+      if (!status) return t.errChooseStatus;
       if (fromMaster) {
-        if (!school) return "Pilih sekolahmu dari daftar.";
-        if (!kelas) return "Pilih kelas.";
+        if (schoolNotFound) {
+          if (schoolManual.trim().length < 3) return t.errTypeSchoolName;
+        } else if (!school) {
+          return t.errChooseSchoolFromList;
+        }
+        if (!kelas) return t.errChooseClass;
       }
       if (manualRequired) {
-        if (!schoolManual.trim()) return "Isi asal sekolahmu.";
-        if (!classManual.trim()) return "Isi kelasmu.";
+        if (!schoolManual.trim()) return t.errFillSchoolOrigin;
+        if (!classManual.trim()) return t.errFillClass;
       }
-      // Guru/keluarga: sekolah & kelas opsional — tak divalidasi.
+      // Keluarga: sekolah & kelas opsional, tak divalidasi.
     }
     if (s === 2) {
-      if (!intent) return "Pilih niat kuliahmu.";
+      if (!intent) return t.errChooseIntent;
     }
     return null;
   }
@@ -372,10 +403,13 @@ export default function OnboardingPage() {
         body: JSON.stringify({
           name: name.trim(),
           phone_number: phone.trim(),
-          // Siswa: sekolah dari master (id) + kelas dropdown.
-          // Guru/keluarga: sekolah & kelas manual (opsional).
+          // Siswa: sekolah dari master (id) + kelas dropdown. Sekolah tak
+          // ada di daftar → kirim nama manual (backend find-or-create).
+          // Guru & teman luar: manual wajib. Keluarga: manual opsional.
           ...(fromMaster
-            ? { school_id: school?.id, class: kelas }
+            ? schoolNotFound
+              ? { school_name: schoolManual.trim(), class: kelas }
+              : { school_id: school?.id, class: kelas }
             : {
                 school_name: schoolManual.trim() || undefined,
                 class: classManual.trim() || undefined,
@@ -390,7 +424,7 @@ export default function OnboardingPage() {
               : undefined,
         }),
       });
-      toast.success("Profil lengkap. Selamat mendukung!");
+      toast.success(t.profileComplete);
       trackEvent("onboarding_complete", {
         college_intent: intent,
         stekom_awareness: awareness || undefined,
@@ -400,9 +434,9 @@ export default function OnboardingPage() {
       } catch {
         /* abaikan */
       }
-      router.replace("/");
+      router.replace(nextPath ?? "/");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Gagal menyimpan profil.");
+      toast.error(e instanceof Error ? e.message : t.saveProfileFailed);
     } finally {
       setBusy(false);
     }
@@ -425,13 +459,13 @@ export default function OnboardingPage() {
             Youth Character Summit
           </div>
           <div>
-            <h1 className="text-xl font-bold">Lengkapi Profilmu</h1>
+            <h1 className="text-xl font-bold">{t.completeProfileTitle}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Sekali saja - biar vote &amp; quest-mu tercatat atas namamu.
+              {t.onceOnlyNote}
               {me.email && (
                 <>
                   {" "}
-                  Masuk sebagai <strong>{me.email}</strong>.
+                  {t.loggedInAs} <strong>{me.email}</strong>.
                 </>
               )}
             </p>
@@ -476,15 +510,19 @@ export default function OnboardingPage() {
           {step === 0 && (
             <>
               <div className="space-y-1.5">
-                <Label>Nama Lengkap</Label>
+                <Label>
+                  {t.fullName} <Req />
+                </Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Nama sesuai identitas"
+                  placeholder={t.namePlaceholder}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Nomor WhatsApp</Label>
+                <Label>
+                  {t.whatsappNumber} <Req />
+                </Label>
                 <Input
                   inputMode="tel"
                   value={phone}
@@ -492,7 +530,7 @@ export default function OnboardingPage() {
                   placeholder="0812xxxxxxxx"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Dipakai sebagai identitas vote-mu (1 nomor = 1 nama).
+                  {t.whatsappNote}
                 </p>
               </div>
             </>
@@ -501,8 +539,12 @@ export default function OnboardingPage() {
           {step === 1 && (
             <>
               <Combobox
-                label="Provinsi"
-                placeholder="Cari provinsi…"
+                label={
+                  <>
+                    {t.province} <Req />
+                  </>
+                }
+                placeholder={t.searchProvince}
                 value={
                   provinceCode
                     ? {
@@ -515,12 +557,16 @@ export default function OnboardingPage() {
                 }
                 items={provinces.map((p) => ({ value: p.code, label: p.name }))}
                 onSelect={(it) => setProvinceCode(it?.value ?? "")}
-                emptyText="Provinsi tak ditemukan."
+                emptyText={t.provinceNotFound}
               />
               <Combobox
-                label="Kabupaten / Kota"
+                label={
+                  <>
+                    {t.regency} <Req />
+                  </>
+                }
                 placeholder={
-                  provinceCode ? "Cari kabupaten/kota…" : "Pilih provinsi dulu"
+                  provinceCode ? t.searchRegency : t.chooseProvinceFirst
                 }
                 disabled={!provinceCode}
                 value={
@@ -535,14 +581,16 @@ export default function OnboardingPage() {
                 }
                 items={regencies.map((r) => ({ value: r.code, label: r.name }))}
                 onSelect={(it) => setRegencyCode(it?.value ?? "")}
-                emptyText="Kabupaten tak ditemukan."
+                emptyText={t.regencyNotFound}
               />
               <div className="space-y-1.5">
-                <Label>Status Kamu</Label>
+                <Label>
+                  {t.yourStatus} <Req />
+                </Label>
                 <SelectBox
                   value={status}
                   onChange={setStatus}
-                  placeholder="Pilih status"
+                  placeholder={t.chooseStatus}
                   options={STATUS_OPTIONS.map((o) => ({
                     value: o.value,
                     label: o.label,
@@ -550,13 +598,30 @@ export default function OnboardingPage() {
                 />
               </div>
 
-              {/* teman_sekolah: sekolah dari master (SMA/SMK/MA) + kelas dropdown. */}
+              {/* teman_sekolah: sekolah dari master (SMA/SMK/MA) + kelas
+                  dropdown. Tak ada di daftar → boleh ketik manual. */}
               {fromMaster ? (
                 <>
+                  {schoolNotFound ? (
+                    <div className="space-y-1.5">
+                      <Label>
+                        {t.schoolOrigin} <Req />
+                      </Label>
+                      <Input
+                        value={schoolManual}
+                        onChange={(e) => setSchoolManual(e.target.value)}
+                        placeholder={t.typeSchoolFullName}
+                      />
+                    </div>
+                  ) : (
                   <Combobox
-                    label="Asal Sekolah"
+                    label={
+                      <>
+                        {t.schoolOrigin} <Req />
+                      </>
+                    }
                     placeholder={
-                      regencyCode ? "Ketik nama sekolah…" : "Pilih kabupaten dulu"
+                      regencyCode ? t.searchSchoolName : t.chooseRegencyFirst
                     }
                     disabled={!regencyCode}
                     value={
@@ -579,56 +644,72 @@ export default function OnboardingPage() {
                       setSchool(hit ?? null);
                       setSchoolQ("");
                     }}
-                    emptyText="Sekolah tak ditemukan. Coba kata kunci lain."
+                    emptyText={t.schoolNotFoundHint}
                   />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSchoolNotFound((v) => !v);
+                      setSchool(null);
+                      setSchoolQ("");
+                    }}
+                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:border-primary hover:bg-primary/10"
+                  >
+                    {schoolNotFound ? (
+                      <>
+                        <Search className="h-4 w-4" />
+                        {t.backToSearchSchool}
+                      </>
+                    ) : (
+                      <>
+                        <PencilLine className="h-4 w-4" />
+                        {t.schoolNotInListPrompt}
+                      </>
+                    )}
+                  </button>
                   <div className="space-y-1.5">
-                    <Label>Kelas</Label>
+                    <Label>
+                      {t.class} <Req />
+                    </Label>
                     <SelectBox
                       value={kelas}
                       onChange={setKelas}
-                      placeholder="Pilih kelas"
+                      placeholder={t.chooseClass}
                       options={[
-                        { value: "10", label: "Kelas 10" },
-                        { value: "11", label: "Kelas 11" },
-                        { value: "12", label: "Kelas 12" },
-                        { value: "alumni", label: "Alumni" },
+                        { value: "10", label: t.classN("10") },
+                        { value: "11", label: t.classN("11") },
+                        { value: "12", label: t.classN("12") },
+                        { value: "alumni", label: t.alumni },
                       ]}
                     />
                   </div>
                 </>
               ) : showManual ? (
-                /* teman_luar (bisa SMP): manual & wajib. Guru/keluarga: opsional. */
+                /* teman_luar & guru: manual wajib. Keluarga: opsional. */
                 <>
                   <div className="space-y-1.5">
                     <Label>
-                      Asal Sekolah{" "}
-                      <span className="text-xs font-normal text-muted-foreground">
-                        {manualOptional ? "(opsional)" : ""}
-                      </span>
+                      {t.schoolOrigin} {manualOptional ? null : <Req />}
                     </Label>
                     <Input
                       value={schoolManual}
                       onChange={(e) => setSchoolManual(e.target.value)}
                       placeholder={
                         manualOptional
-                          ? "Ketik nama sekolah/instansi (boleh dikosongkan)"
-                          : "Ketik nama sekolahmu"
+                          ? t.typeSchoolOrInstance
+                          : t.typeYourSchool
                       }
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label>
-                      Kelas{" "}
-                      <span className="text-xs font-normal text-muted-foreground">
-                        {manualOptional ? "(opsional)" : ""}
-                      </span>
+                      {t.class} {manualOptional ? null : <Req />}
                     </Label>
                     <Input
                       value={classManual}
                       onChange={(e) => setClassManual(e.target.value)}
-                      placeholder={
-                        manualOptional ? "Boleh dikosongkan" : "Ketik kelasmu"
-                      }
+                      placeholder={t.typeYourClass}
                     />
                   </div>
                 </>
@@ -639,7 +720,9 @@ export default function OnboardingPage() {
           {step === 2 && (
             <>
               <div className="space-y-1.5">
-                <Label>Apakah kamu berniat melanjutkan kuliah?</Label>
+                <Label>
+                  {t.collegeIntentQuestion} <Req />
+                </Label>
                 <div className="grid gap-2">
                   {INTENT_OPTIONS.map((o) => (
                     <label
@@ -666,16 +749,11 @@ export default function OnboardingPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>
-                  Apakah kamu sudah mengenal Universitas STEKOM?{" "}
-                  <span className="text-xs font-normal text-muted-foreground">
-                    (opsional)
-                  </span>
-                </Label>
+                <Label>{t.stekomAwarenessQuestion}</Label>
                 <SelectBox
                   value={awareness}
                   onChange={setAwareness}
-                  placeholder="Pilih salah satu"
+                  placeholder={t.chooseOne}
                   options={AWARENESS_OPTIONS.map((o) => ({
                     value: o.value,
                     label: o.label,
@@ -686,16 +764,11 @@ export default function OnboardingPage() {
               {(awareness === "pernah_dengar" ||
                 awareness === "sudah_minat") && (
                 <div className="space-y-1.5">
-                  <Label>
-                    Tahu Universitas STEKOM dari mana?{" "}
-                    <span className="text-xs font-normal text-muted-foreground">
-                      (opsional)
-                    </span>
-                  </Label>
+                  <Label>{t.stekomSourceQuestion}</Label>
                   <SelectBox
                     value={stekomSource}
                     onChange={setStekomSource}
-                    placeholder="Pilih sumber"
+                    placeholder={t.chooseSource}
                     options={SOURCE_OPTIONS}
                   />
                 </div>
@@ -709,16 +782,16 @@ export default function OnboardingPage() {
               onClick={() => setStep((v) => Math.max(0, v - 1))}
               disabled={step === 0 || busy}
             >
-              <ArrowLeft className="h-4 w-4" /> Kembali
+              <ArrowLeft className="h-4 w-4" /> {t.back}
             </Button>
             {step < STEPS.length - 1 ? (
               <Button onClick={next}>
-                Lanjut <ArrowRight className="h-4 w-4" />
+                {t.next} <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
               <Button onClick={submit} disabled={busy}>
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-                Selesai
+                {t.done}
               </Button>
             )}
           </div>

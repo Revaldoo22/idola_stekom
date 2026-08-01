@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import { use } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import { MaintenanceOverlay } from "@/components/maintenance-overlay";
 import { EventClosedOverlay } from "@/components/event-closed-overlay";
 import {
   ArrowLeft,
+  BadgeCheck,
   Heart,
   Link as LinkIcon,
   Loader2,
@@ -43,6 +43,7 @@ import {
   useParticipantContents,
   useQuests,
   useSettings,
+  useVoterToday,
 } from "@/lib/queries";
 import { CheckCircle2, ExternalLink } from "lucide-react";
 import { api } from "@/lib/api-client";
@@ -56,7 +57,10 @@ import {
   type VoterFormData,
 } from "@/components/voter-form-fields";
 import { useConfirm } from "@/components/confirm-dialog";
+import { PhotoLightbox } from "@/components/photo-lightbox";
 import type { ParticipantWithSchool, Quest } from "@/types/database";
+import { useTranslation } from "@/lib/i18n";
+import type { Dictionary } from "@/lib/i18n/types";
 
 export default function PublicParticipantPage({
   params,
@@ -64,11 +68,20 @@ export default function PublicParticipantPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const t = useTranslation("peserta");
+  // Pop-up zoom foto peserta (latar halaman diblur).
+  const [photoOpen, setPhotoOpen] = React.useState(false);
   const anonVoter = useVoterForm();
   const { data: me } = useMyProfile();
   const { data: quests } = useQuests(true);
   const { data: settings } = useSettings();
   const eventClosed = settings ? !settings.event_open : false;
+
+  // Vote milik akun ini — untuk label "sudah kamu vote" di peserta terkait.
+  const { data: myVotes } = useVoterToday(!!me);
+  const myVote = (myVotes?.votes ?? []).find((v) => v.participant_id === id);
+  const votedThis = !!myVote;
+  const votePending = myVote?.status === "pending";
 
   const router = useRouter();
 
@@ -81,11 +94,11 @@ export default function PublicParticipantPage({
   const gate: (() => void) | null = !me
     ? () => router.push(`/login?next=/peserta/${id}`)
     : me.role === "admin"
-      ? () => toast.error("Akun admin tidak bisa memberi dukungan.")
+      ? () => toast.error(t.adminCannotVote)
       : me.role === "voter" && !me.onboarded
         ? () => router.push("/onboarding")
         : isSelf
-          ? () => toast.error("Kamu tidak bisa mendukung dirimu sendiri.")
+          ? () => toast.error(t.cannotVoteSelf)
           : null;
 
   // Identitas voter otomatis (tanpa form manual) untuk:
@@ -129,15 +142,21 @@ export default function PublicParticipantPage({
       <EventClosedOverlay />
       <Navbar />
       <main className="container max-w-3xl space-y-6 py-8">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/">
-            <ArrowLeft className="h-4 w-4" /> Kembali
-          </Link>
+        {/* Kembali ke halaman sebelumnya (scroll & state utuh via history);
+            fallback ke beranda kalau dibuka langsung dari link. */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            window.history.length > 1 ? router.back() : router.push("/")
+          }
+        >
+          <ArrowLeft className="h-4 w-4" /> {t.back}
         </Button>
 
         {eventClosed && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-center text-sm font-medium text-destructive">
-            {settings?.closed_message ?? "Event sedang ditutup."}
+            {settings?.closed_message ?? t.eventClosedDefault}
           </div>
         )}
 
@@ -149,12 +168,17 @@ export default function PublicParticipantPage({
         ) : isError ? (
           <ErrorState onRetry={() => refetch()} />
         ) : !participant ? (
-          <EmptyState title="Peserta tidak ditemukan" />
+          <EmptyState title={t.notFound} />
         ) : (
           <>
             <Card className="overflow-hidden">
               {participant.photo_url && (
-                <div className="relative aspect-video w-full overflow-hidden bg-muted">
+                <button
+                  type="button"
+                  onClick={() => setPhotoOpen(true)}
+                  aria-label={t.zoomPhoto(participant.name)}
+                  className="relative block aspect-video w-full cursor-zoom-in overflow-hidden bg-muted"
+                >
                   <Image
                     src={participant.photo_url}
                     alt={participant.name}
@@ -165,18 +189,31 @@ export default function PublicParticipantPage({
                     // (berbatas waktu) — optimizer Next gagal; pakai apa adanya.
                     unoptimized
                   />
-                </div>
+                </button>
               )}
               <CardContent className="space-y-4 p-6">
                 <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16 border-2">
-                    {participant.photo_url && (
-                      <AvatarImage src={participant.photo_url} alt={participant.name} />
-                    )}
-                    <AvatarFallback className="text-lg">
-                      {participant.name.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      participant.photo_url && setPhotoOpen(true)
+                    }
+                    className={participant.photo_url ? "cursor-zoom-in" : undefined}
+                    aria-label={
+                      participant.photo_url
+                        ? t.zoomPhoto(participant.name)
+                        : undefined
+                    }
+                  >
+                    <Avatar className="h-16 w-16 border-2">
+                      {participant.photo_url && (
+                        <AvatarImage src={participant.photo_url} alt={participant.name} />
+                      )}
+                      <AvatarFallback className="text-lg">
+                        {participant.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
                   <div className="min-w-0 flex-1">
                     <h2 className="text-xl font-bold">{participant.name}</h2>
                     <p className="text-sm text-muted-foreground">
@@ -195,7 +232,7 @@ export default function PublicParticipantPage({
                     )}
                   </div>
                   <Badge variant="accent" className="shrink-0">
-                    {formatNumber(participant.total_points)} poin
+                    {formatNumber(participant.total_points)} {t.points}
                   </Badge>
                 </div>
                 {participant.description && (
@@ -204,31 +241,53 @@ export default function PublicParticipantPage({
 
                 <ShareButton name={participant.name} />
 
-                <VoteDialog
-                  participantId={id}
-                  participantName={participant.name}
-                  voter={voter}
-                  locked={locked}
-                  followed={followed}
-                  gate={gate}
-                  disabled={eventClosed}
-                  onVoted={() => refetch()}
-                />
+                {votedThis ? (
+                  votePending ? (
+                    <div className="flex w-full items-center justify-center gap-2 rounded-lg border border-amber-400/50 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t.votedPendingReview}
+                    </div>
+                  ) : (
+                    <div className="flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300/60 bg-gradient-to-r from-amber-400 to-yellow-300 px-4 py-2.5 text-sm font-bold text-amber-950 shadow-[0_0_18px_rgba(251,191,36,0.55)]">
+                      <BadgeCheck className="h-4 w-4" />
+                      {t.votedThanks}
+                    </div>
+                  )
+                ) : (
+                  <VoteDialog
+                    participantId={id}
+                    participantName={participant.name}
+                    voter={voter}
+                    locked={locked}
+                    followed={followed || isParticipant}
+                    gate={gate}
+                    disabled={eventClosed}
+                    onVoted={() => refetch()}
+                  />
+                )}
                 <p className="text-center text-xs text-muted-foreground">
-                  Setiap akun hanya bisa memberi 1 vote seumur event.
+                  {t.oneVotePerAccount}
                 </p>
               </CardContent>
             </Card>
+
+            {participant.photo_url && (
+              <PhotoLightbox
+                src={participant.photo_url}
+                alt={participant.name}
+                open={photoOpen}
+                onClose={() => setPhotoOpen(false)}
+              />
+            )}
 
             {quests && quests.length > 0 && (
             <section>
               <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold">
                 <Trophy className="h-5 w-5 text-accent" />
-                Kerjakan quest untuk memberikan poin tambahan ke{" "}
-                {participant.name}
+                {t.questSectionTitle(participant.name)}
               </h3>
               {false ? (
-                <EmptyState title="Belum ada quest aktif" />
+                <EmptyState title={t.emptyActiveQuest} />
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {quests.map((q) => (
@@ -256,34 +315,64 @@ export default function PublicParticipantPage({
 
 type VoterCtx = ReturnType<typeof useVoterForm>;
 
-function validateVoter(data: VoterFormData): string | null {
+/**
+ * Tugas follow wajib sebelum vote pertama — masing-masing upload bukti.
+ * Key HARUS sinkron dengan REQUIRED_FOLLOW_TASKS di backend.
+ */
+const FOLLOW_TASK_URLS = [
+  "https://tiktok.com/@stekomuniversity",
+  "https://instagram.com/universitasstekom",
+  "https://tiktok.com/@toploker.com",
+  "https://instagram.com/toplokercom",
+  "https://whatsapp.com/channel/0029VaYIG217oQhhUoA3a915",
+  "https://whatsapp.com/channel/0029Vb5vVIaId7nEqecJ1I1G",
+];
+const FOLLOW_TASK_KEYS = [
+  "stekom_tiktok",
+  "stekom_ig",
+  "toploker_tiktok",
+  "toploker_ig",
+  "wa_stekom",
+  "wa_ycs",
+];
+
+function useFollowTasks(t: Dictionary["peserta"]) {
+  return t.followTasks.map((task, i) => ({
+    key: FOLLOW_TASK_KEYS[i],
+    title: task.title,
+    url: FOLLOW_TASK_URLS[i],
+    linkLabel: task.linkLabel,
+  }));
+}
+
+function validateVoter(data: VoterFormData, t: Dictionary["peserta"]): string | null {
   const r = voterInfoSchema.safeParse(data);
-  return r.success ? null : r.error.issues[0]?.message ?? "Data tidak lengkap";
+  return r.success ? null : r.error.issues[0]?.message ?? t.incompleteData;
 }
 
 function ShareButton({ name }: { name: string }) {
-  async function share() {
+  const t = useTranslation("peserta");
+  // Langsung buka WhatsApp dengan pesan siap kirim (saluran di baris atas),
+  // lalu user tinggal memilih mau dikirim ke siapa.
+  function share() {
     const url = typeof window !== "undefined" ? window.location.href : "";
-    const text = `Dukung ${name} di Youth Character Summit Universitas STEKOM! 🔥`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: name, text, url });
-        return;
-      } catch {
-        return; // user batal - jangan tampilkan error
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-      toast.success("Link disalin! Bagikan ke teman-temanmu.");
-    } catch {
-      toast.error("Gagal menyalin link.");
-    }
+    const msg = [
+      "https://whatsapp.com/channel/0029VaYIG217oQhhUoA3a915",
+      "",
+      t.shareMessage(name),
+      url,
+    ].join("\n");
+    trackEvent("share_profile", { participant: name });
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(msg)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   }
 
   return (
     <Button variant="outline" className="w-full" onClick={share}>
-      <Share2 className="h-4 w-4" /> Bagikan Profil
+      <Share2 className="h-4 w-4" /> {t.shareProfile}
     </Button>
   );
 }
@@ -310,9 +399,13 @@ function VoteDialog({
   disabled: boolean;
   onVoted: () => void;
 }) {
+  const t = useTranslation("peserta");
+  const followTasks = useFollowTasks(t);
   const [open, setOpen] = React.useState(false);
   const [showFollow, setShowFollow] = React.useState(false);
-  const [followProof, setFollowProof] = React.useState<File | null>(null);
+  // Screenshot bukti follow — satu tombol upload, boleh banyak sekaligus.
+  const MAX_PROOFS = 12;
+  const [proofFiles, setProofFiles] = React.useState<File[]>([]);
   const [busy, setBusy] = React.useState(false);
   const qc = useQueryClient();
   const confirm = useConfirm();
@@ -330,45 +423,53 @@ function VoteDialog({
       void doSubmit();
       return;
     }
-    const err = validateVoter(voter.data);
+    const err = validateVoter(voter.data, t);
     if (err) {
       toast.error(err);
       return;
     }
     confirm({
-      title: "Pastikan data kamu benar",
-      description: `Nama: ${voter.data.name}\nNomor WhatsApp: ${voter.data.phone_number}\nEmail: ${voter.data.email}\n\nData ini dipakai panitia untuk menghubungimu jika kamu mendapatkan reward. Pastikan benar - tidak bisa diubah setelah dikirim.`,
-      confirmText: "Saya Yakin, Kirim",
+      title: t.confirmDataTitle,
+      description: t.confirmDataDescription(
+        voter.data.name,
+        voter.data.phone_number,
+        voter.data.email,
+      ),
+      confirmText: t.confirmSend,
       onConfirm: doSubmit,
     });
+  }
+
+  /** Upload satu screenshot bukti → URL absolut. */
+  async function uploadProof(file: File): Promise<string> {
+    const img = await compressImage(file, { maxSize: 900, quality: 0.7 });
+    const fd = new FormData();
+    fd.append("file", img);
+    const up = await api<{ url: string }>("/api/upload-proof", {
+      method: "POST",
+      body: fd,
+    });
+    return new URL(up.url, window.location.origin).toString();
   }
 
   async function doSubmit(followConfirmed = false) {
     setBusy(true);
     try {
-      // Follow pertama wajib lampirkan screenshot bukti.
-      let followProofUrl: string | undefined;
+      // Follow pertama: upload semua screenshot bukti (satu tombol, multi).
+      let followProofs: string[] | undefined;
       if (followConfirmed) {
-        if (!followProof) {
-          toast.error("Upload screenshot bukti follow dulu.");
+        if (proofFiles.length === 0) {
+          toast.error(t.uploadProofFirst);
           return;
         }
-        const img = await compressImage(followProof, {
-          maxSize: 900,
-          quality: 0.7,
-        });
-        const fd = new FormData();
-        fd.append("file", img);
         try {
-          const up = await api<{ url: string }>("/api/upload-proof", {
-            method: "POST",
-            body: fd,
-          });
-          followProofUrl = new URL(up.url, window.location.origin).toString();
+          followProofs = [];
+          for (const f of proofFiles) {
+            followProofs.push(await uploadProof(f));
+          }
         } catch (err) {
           toast.error(
-            "Gagal mengunggah bukti: " +
-              (err instanceof Error ? err.message : ""),
+            t.uploadProofFailed(err instanceof Error ? err.message : ""),
           );
           return;
         }
@@ -382,13 +483,13 @@ function VoteDialog({
           participant_id: participantId,
           fingerprint,
           ...(followConfirmed
-            ? { follow_confirmed: true, follow_proof_url: followProofUrl }
+            ? { follow_confirmed: true, follow_proofs: followProofs }
             : {}),
         }),
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error((Array.isArray(data.message) ? data.message[0] : data.message) ?? data.error ?? "Gagal memberikan dukungan.");
+        toast.error((Array.isArray(data.message) ? data.message[0] : data.message) ?? data.error ?? t.voteFailed);
         return;
       }
       voter.persist(voter.data);
@@ -396,13 +497,20 @@ function VoteDialog({
         participant_id: participantId,
         points: pts,
       });
-      if (followConfirmed) {
-        toast.success("Vote terkirim. Kupon undian handphone masuk ke akunmu!");
+      // Refresh label "sudah kamu vote" di card & halaman peserta.
+      qc.invalidateQueries({ queryKey: ["voter-today"] });
+      if (data.pending) {
+        // Bukti follow direview admin dulu — poin & kupon menyusul.
+        toast.success(t.votePendingSuccess);
+        trackEvent("follow_confirmed");
+        qc.invalidateQueries({ queryKey: ["profile", "me"] });
+      } else if (followConfirmed) {
+        toast.success(t.voteWithCouponSuccess);
         trackEvent("follow_confirmed");
         qc.invalidateQueries({ queryKey: ["profile", "me"] });
         qc.invalidateQueries({ queryKey: ["my-coupons"] });
       } else {
-        toast.success(`+${pts} terkirim untuk ${participantName}`);
+        toast.success(t.voteSuccess(pts, participantName));
       }
       setOpen(false);
       setShowFollow(false);
@@ -422,7 +530,7 @@ function VoteDialog({
         onClick={gate}
       >
         <Heart className="h-4 w-4" />
-        {disabled ? "Event ditutup" : "Dukung"}
+        {disabled ? t.eventClosed : t.support}
       </Button>
     );
   }
@@ -434,50 +542,89 @@ function VoteDialog({
       <Dialog open={showFollow} onOpenChange={setShowFollow}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Follow dulu, dapat kupon undian</DialogTitle>
+            <DialogTitle>{t.followTaskDialogTitle}</DialogTitle>
             <DialogDescription>
-              Sekali saja untuk seluruh event. Follow akun Universitas STEKOM,
-              lalu kirim vote pertamamu dan dapatkan kupon undian berhadiah
-              handphone.
+              {t.followTaskDialogDescription(followTasks.length)}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button variant="outline" asChild>
+
+          {/* Daftar tugas: klik untuk membuka akun/saluran yang harus di-follow. */}
+          <div className="max-h-[35vh] space-y-1.5 overflow-y-auto pr-1">
+            {followTasks.map((task, i) => (
               <a
-                href="https://www.instagram.com/universitasstekom"
+                key={task.key}
+                href={task.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                className="flex items-center justify-between gap-2 rounded-lg border p-2.5 text-sm transition-colors hover:border-primary/40 hover:bg-primary/5"
               >
-                Instagram Universitas STEKOM
+                <span className="min-w-0 truncate font-medium">
+                  {i + 1}. {task.title}
+                </span>
+                <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
               </a>
-            </Button>
-            <Button variant="outline" asChild>
-              <a
-                href="https://www.tiktok.com/@stekomuniversity"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                TikTok Universitas STEKOM
-              </a>
-            </Button>
+            ))}
           </div>
+
+          {/* Satu tombol upload untuk semua bukti — boleh pilih banyak sekaligus. */}
           <div className="space-y-1.5">
-            <Label>Screenshot Bukti Follow</Label>
+            <Label>{t.screenshotProofLabel}</Label>
             <Input
               type="file"
               accept="image/*"
-              onChange={(e) => setFollowProof(e.target.files?.[0] ?? null)}
+              multiple
+              disabled={proofFiles.length >= MAX_PROOFS}
+              onChange={(e) => {
+                const picked = Array.from(e.target.files ?? []);
+                setProofFiles((prev) => {
+                  const merged = [...prev];
+                  for (const f of picked) {
+                    if (
+                      merged.length < MAX_PROOFS &&
+                      !merged.some((x) => x.name === f.name && x.size === f.size)
+                    )
+                      merged.push(f);
+                  }
+                  return merged;
+                });
+                e.target.value = ""; // reset agar bisa pilih lagi
+              }}
             />
-            <p className="text-xs text-muted-foreground">
-              Screenshot profil Universitas STEKOM yang menunjukkan kamu sudah follow.
-            </p>
+            {proofFiles.length > 0 && (
+              <ul className="space-y-1">
+                {proofFiles.map((f, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between gap-2 rounded-md border px-2 py-1 text-xs"
+                  >
+                    <span className="min-w-0 truncate">{f.name}</span>
+                    <button
+                      type="button"
+                      className="shrink-0 text-destructive"
+                      onClick={() =>
+                        setProofFiles((prev) => prev.filter((_, j) => j !== i))
+                      }
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+                <li className="text-xs text-muted-foreground">
+                  {proofFiles.length}/{MAX_PROOFS} {t.files}
+                </li>
+              </ul>
+            )}
           </div>
+
+          <p className="text-xs text-muted-foreground">
+            {t.proofNote}
+          </p>
           <Button
             onClick={() => doSubmit(true)}
-            disabled={busy || !followProof}
+            disabled={busy || proofFiles.length === 0}
           >
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            Kirim bukti &amp; vote
+            {t.sendProofAndVote(proofFiles.length)}
           </Button>
         </DialogContent>
       </Dialog>
@@ -492,7 +639,7 @@ function VoteDialog({
         ) : (
           <Heart className="h-4 w-4" />
         )}
-        {disabled ? "Event ditutup" : "Dukung"}
+        {disabled ? t.eventClosed : t.support}
       </Button>
       </>
     );
@@ -507,20 +654,20 @@ function VoteDialog({
           disabled={disabled}
         >
           <Heart className="h-4 w-4" />
-          {disabled ? "Event ditutup" : "Dukung"}
+          {disabled ? t.eventClosed : t.support}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Dukung {participantName}</DialogTitle>
+          <DialogTitle>{t.supportName(participantName)}</DialogTitle>
           <DialogDescription>
-            Setiap akun hanya bisa memberi 1 vote seumur event.
+            {t.oneVotePerAccount}
           </DialogDescription>
         </DialogHeader>
         <VoterFormFields data={voter.data} onChange={voter.setData} />
         <Button onClick={submit} disabled={busy}>
           {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-          Kirim Dukungan
+          {t.sendSupport}
         </Button>
       </DialogContent>
     </Dialog>
@@ -546,6 +693,7 @@ function QuestCard({
   gate: (() => void) | null;
   disabled: boolean;
 }) {
+  const t = useTranslation("peserta");
   const [open, setOpen] = React.useState(false);
   const [files, setFiles] = React.useState<File[]>([]);
   const [links, setLinks] = React.useState<string[]>([""]);
@@ -574,22 +722,26 @@ function QuestCard({
 
   function submit() {
     if (needsContent && !contentId) {
-      toast.error("Pilih konten peserta dulu.");
+      toast.error(t.chooseContentFirst);
       return;
     }
     if (locked) {
       void doSubmit();
       return;
     }
-    const err = validateVoter(voter.data);
+    const err = validateVoter(voter.data, t);
     if (err) {
       toast.error(err);
       return;
     }
     confirm({
-      title: "Pastikan data kamu benar",
-      description: `Nama: ${voter.data.name}\nNomor WhatsApp: ${voter.data.phone_number}\nEmail: ${voter.data.email}\n\nData ini dipakai panitia untuk menghubungimu jika kamu mendapatkan reward. Pastikan benar - tidak bisa diubah setelah dikirim.`,
-      confirmText: "Saya Yakin, Kirim",
+      title: t.confirmDataTitle,
+      description: t.confirmDataDescription(
+        voter.data.name,
+        voter.data.phone_number,
+        voter.data.email,
+      ),
+      confirmText: t.confirmSend,
       onConfirm: doSubmit,
     });
   }
@@ -601,13 +753,13 @@ function QuestCard({
       if (isLink) {
         const clean = links.map((l) => l.trim()).filter(Boolean);
         if (clean.length === 0 || clean.some((l) => !/^https?:\/\/.+/i.test(l))) {
-          toast.error("Masukkan link postingan yang valid (mulai http).");
+          toast.error(t.invalidLink);
           return;
         }
         proofUrls = clean;
       } else {
         if (files.length === 0) {
-          toast.error("Pilih minimal 1 file bukti.");
+          toast.error(t.chooseAtLeastOneFile);
           return;
         }
         for (const f of files) {
@@ -623,7 +775,7 @@ function QuestCard({
             proofUrls.push(new URL(up.url, window.location.origin).toString());
           } catch (err) {
             toast.error(
-              "Gagal mengunggah: " + (err instanceof Error ? err.message : "")
+              t.uploadFailed(err instanceof Error ? err.message : "")
             );
             return;
           }
@@ -631,7 +783,7 @@ function QuestCard({
       }
 
       if (proofUrls.length > 5) {
-        toast.error("Maksimal 5 bukti.");
+        toast.error(t.maxProofs);
         return;
       }
 
@@ -648,11 +800,11 @@ function QuestCard({
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error((Array.isArray(data.message) ? data.message[0] : data.message) ?? data.error ?? "Gagal mengirim submission.");
+        toast.error((Array.isArray(data.message) ? data.message[0] : data.message) ?? data.error ?? t.submissionFailed);
         return;
       }
       voter.persist(voter.data);
-      toast.success("Bukti terkirim! Akan direview admin sebelum poin masuk.");
+      toast.success(t.submissionSuccess);
       setOpen(false);
       setFiles([]);
       setLinks([""]);
@@ -673,10 +825,10 @@ function QuestCard({
       </CardHeader>
       <CardContent className="space-y-3">
         {quest.frequency === "daily" && (
-          <Badge variant="warning">Harian · bisa diulang tiap hari</Badge>
+          <Badge variant="warning">{t.dailyBadge}</Badge>
         )}
         <p className="min-h-[2.5rem] whitespace-pre-line text-sm text-muted-foreground">
-          {quest.description || "Selesaikan quest untuk poin tambahan."}
+          {quest.description || t.defaultQuestDescription}
         </p>
         {quest.ref_image && (
           <a href={quest.ref_image} target="_blank" rel="noopener noreferrer">
@@ -697,17 +849,17 @@ function QuestCard({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
           >
-            <LinkIcon className="h-4 w-4" /> Buka arahan / akun
+            <LinkIcon className="h-4 w-4" /> {t.openReference}
           </a>
         )}
         {needsContent && allOptions.length === 0 && (
           <p className="text-xs text-muted-foreground">
-            Peserta belum menambahkan konten untuk quest ini.
+            {t.noContentYet}
           </p>
         )}
         {needsContent && allOptions.length > 0 && remaining.length === 0 && (
           <Badge variant="success" className="gap-1">
-            <CheckCircle2 className="h-4 w-4" /> Semua konten sudah dikerjakan
+            <CheckCircle2 className="h-4 w-4" /> {t.allContentDone}
           </Badge>
         )}
         <Dialog open={open} onOpenChange={(o) => !gate && setOpen(o)}>
@@ -729,25 +881,24 @@ function QuestCard({
               }
             >
               {isLink ? <LinkIcon className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
-              {disabled ? "Event ditutup" : "Kerjakan Quest"}
+              {disabled ? t.eventClosed : t.doQuest}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{quest.name}</DialogTitle>
               <DialogDescription>
-                Untuk {participantName} · +{quest.point} poin. Direview admin
-                dulu sebelum poin masuk.
+                {t.forParticipantPoints(participantName, quest.point)}
               </DialogDescription>
             </DialogHeader>
 
             {needsContent && (
               <div className="space-y-1.5">
                 <Label>
-                  Pilih konten peserta{" "}
+                  {t.chooseParticipantContent}{" "}
                   {quest.content_kind === "sound"
-                    ? "(sumber sound)"
-                    : "(untuk like/komen/repost)"}
+                    ? t.forSoundSource
+                    : t.forLikeCommentRepost}
                 </Label>
                 <div className="space-y-2">
                   {allOptions.map((c, i) => {
@@ -771,11 +922,11 @@ function QuestCard({
                           onChange={() => setContentId(c.id)}
                         />
                         <span className="min-w-0 flex-1 font-medium">
-                          Konten {i + 1}
+                          {t.contentN(i + 1)}
                         </span>
                         {done ? (
                           <Badge variant="success" className="gap-1">
-                            <CheckCircle2 className="h-3.5 w-3.5" /> Sudah
+                            <CheckCircle2 className="h-3.5 w-3.5" /> {t.done}
                           </Badge>
                         ) : (
                           <Button
@@ -789,7 +940,7 @@ function QuestCard({
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              <ExternalLink className="h-4 w-4" /> Buka
+                              <ExternalLink className="h-4 w-4" /> {t.open}
                             </a>
                           </Button>
                         )}
@@ -798,10 +949,10 @@ function QuestCard({
                   })}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Buka kontennya,{" "}
+                  {t.openContentThen}{" "}
                   {quest.content_kind === "sound"
-                    ? "buat konten pakai sound itu, lalu kirim link kontenmu."
-                    : "lakukan like/komen/repost, lalu upload screenshot."}
+                    ? t.makeContentWithSound
+                    : t.doLikeCommentRepost}
                 </p>
               </div>
             )}
@@ -811,7 +962,7 @@ function QuestCard({
             )}
             {isLink ? (
               <div className="space-y-1.5">
-                <Label>Link Postingan (boleh lebih dari 1, maks 5)</Label>
+                <Label>{t.postLinkLabel}</Label>
                 {links.map((l, i) => (
                   <div key={i} className="flex gap-2">
                     <Input
@@ -846,13 +997,13 @@ function QuestCard({
                     variant="outline"
                     onClick={() => setLinks((arr) => [...arr, ""])}
                   >
-                    <Plus className="h-4 w-4" /> Tambah link
+                    <Plus className="h-4 w-4" /> {t.addLink}
                   </Button>
                 )}
               </div>
             ) : (
               <div className="space-y-1.5">
-                <Label>File Bukti (boleh lebih dari 1, maks 5)</Label>
+                <Label>{t.proofFileLabel}</Label>
                 <Input
                   type="file"
                   accept="image/*,video/*"
@@ -896,7 +1047,7 @@ function QuestCard({
                       </li>
                     ))}
                     <li className="text-xs text-muted-foreground">
-                      {files.length}/5 file
+                      {files.length}/5 {t.files}
                     </li>
                   </ul>
                 )}
@@ -904,7 +1055,7 @@ function QuestCard({
             )}
             <Button onClick={submit} disabled={busy}>
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-              Kirim Bukti
+              {t.sendProof}
             </Button>
           </DialogContent>
         </Dialog>

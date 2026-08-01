@@ -1,23 +1,214 @@
 "use client";
 
 import * as React from "react";
-import { Flag, Loader2, Trophy } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Flag,
+  Loader2,
+  MapPin,
+  School as SchoolIcon,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { MaintenanceOverlay } from "@/components/maintenance-overlay";
 import { EventClosedOverlay } from "@/components/event-closed-overlay";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { EmptyState, LoadingState } from "@/components/states";
 import {
+  useMyProfile,
+  useParticipants,
   usePublicRounds,
   useRoundResults,
   type RoundStanding,
 } from "@/lib/queries";
 import { cn, formatNumber } from "@/lib/utils";
+import { RankMedal, podiumRowClass } from "@/components/rank-medal";
+import { useTranslation } from "@/lib/i18n";
+
+/** Node drill-down (provinsi/kabupaten) — key stabil walau id null. */
+type DrillGroup = {
+  key: string;
+  name: string;
+  points: number;
+  schools: number;
+  /** Jumlah sub-wilayah (kabupaten di level provinsi). */
+  children: number;
+};
+
+/** Chip penanda wilayah/sekolah milik voter login. */
+function MineBadge({ label }: { label: string }) {
+  return (
+    <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary ring-1 ring-inset ring-primary/30">
+      {label}
+    </span>
+  );
+}
+
+/** Baris leaderboard wilayah yang bisa diklik untuk drill-down. */
+function GroupRow({
+  rank,
+  group,
+  childLabel,
+  mineLabel,
+  onClick,
+}: {
+  rank: number;
+  group: DrillGroup;
+  childLabel: string;
+  /** Terisi = ini wilayah si voter → di-highlight. */
+  mineLabel?: string;
+  onClick: () => void;
+}) {
+  const t = useTranslation("gelombang");
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border p-3 text-left text-sm transition-colors hover:border-primary/40 hover:bg-primary/5",
+        podiumRowClass(rank),
+        mineLabel && "border-primary/50 bg-primary/5 ring-1 ring-inset ring-primary/30",
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <RankMedal rank={rank} />
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 truncate font-semibold">
+            <span className="truncate">{group.name}</span>
+            {mineLabel && <MineBadge label={mineLabel} />}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {group.children > 0 && <>{group.children} {childLabel} · </>}
+            {group.schools} {t.schools}
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="font-semibold tabular-nums text-primary">
+          {formatNumber(group.points)}
+        </span>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </div>
+    </button>
+  );
+}
+
+/** Agregasi standings jadi leaderboard wilayah (provinsi atau kabupaten). */
+function groupBy(
+  rows: RoundStanding[],
+  keyOf: (r: RoundStanding) => string,
+  nameOf: (r: RoundStanding) => string,
+  childKeyOf?: (r: RoundStanding) => string,
+): DrillGroup[] {
+  const map = new Map<string, DrillGroup & { childSet: Set<string> }>();
+  for (const r of rows) {
+    const key = keyOf(r);
+    const g =
+      map.get(key) ??
+      ({ key, name: nameOf(r), points: 0, schools: 0, children: 0, childSet: new Set() } as DrillGroup & {
+        childSet: Set<string>;
+      });
+    g.points += r.points;
+    g.schools += 1;
+    if (childKeyOf) g.childSet.add(childKeyOf(r));
+    map.set(key, g);
+  }
+  return Array.from(map.values())
+    .map(({ childSet, ...g }) => ({ ...g, children: childSet.size }))
+    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+}
+
+/**
+ * Header kolom di atas daftar leaderboard — menjelaskan angka di kanan
+ * adalah total poin.
+ */
+function ListHeader({ label }: { label: string }) {
+  const t = useTranslation("gelombang");
+  return (
+    <div className="flex items-center justify-between gap-3 px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <span className="pl-8">{label}</span>
+      <span className="pr-6">{t.totalPoints}</span>
+    </div>
+  );
+}
+
+/** Leaderboard siswa satu sekolah (level terdalam drill-down). */
+function StudentBoard({ schoolId }: { schoolId: string }) {
+  const t = useTranslation("gelombang");
+  const { data: participants, isLoading } = useParticipants(schoolId);
+  const list = (participants ?? []).filter((p) => p.status === "active");
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (list.length === 0) {
+    return <EmptyState title={t.emptyActiveParticipants} />;
+  }
+  return (
+    <div className="space-y-2">
+      <ListHeader label={t.student} />
+      {list.map((p, i) => (
+        <Link
+          key={p.id}
+          href={`/peserta/${p.id}`}
+          className={cn(
+            "flex items-center justify-between gap-3 rounded-xl border p-3 text-sm transition-colors hover:border-primary/40 hover:bg-primary/5",
+            podiumRowClass(i + 1),
+          )}
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <RankMedal rank={i + 1} />
+            {p.photo_url ? (
+              <Image
+                src={p.photo_url}
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 shrink-0 rounded-full object-cover"
+                unoptimized
+              />
+            ) : (
+              <Avatar className="h-9 w-9 shrink-0">
+                <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                  {p.name.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            )}
+            <p className="truncate font-semibold">{p.name}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="font-semibold tabular-nums text-primary">
+              {formatNumber(p.total_points)}
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+type Crumb = { key: string; name: string };
 
 export default function PublicRoundsPage() {
+  const t = useTranslation("gelombang");
   const { data: rounds, isLoading } = usePublicRounds();
   const [selected, setSelected] = React.useState<string>("");
+
+  // Drill-down: nasional → provinsi → kabupaten → sekolah → siswa.
+  const [province, setProvince] = React.useState<Crumb | null>(null);
+  const [region, setRegion] = React.useState<Crumb | null>(null);
+  const [school, setSchool] = React.useState<Crumb | null>(null);
 
   // Default: round aktif, kalau tidak ada → yang terbaru.
   React.useEffect(() => {
@@ -29,17 +220,100 @@ export default function PublicRoundsPage() {
 
   const round = rounds?.find((r) => r.id === selected);
   const { data: results, isLoading: loadingResults } = useRoundResults(selected);
+  const { data: me } = useMyProfile();
 
-  // Kelompokkan per kabupaten.
-  const groups = React.useMemo(() => {
-    const map = new Map<string, RoundStanding[]>();
-    for (const row of results ?? []) {
-      const arr = map.get(row.region_name) ?? [];
-      arr.push(row);
-      map.set(row.region_name, arr);
-    }
-    return Array.from(map.entries());
-  }, [results]);
+  const provKey = (r: RoundStanding) => r.province_id ?? "none";
+  const regKey = (r: RoundStanding) => r.region_id ?? "none";
+
+  // Wilayah si voter (untuk highlight "Provinsimu/Kabupatenmu/Sekolahmu").
+  // Provinsi tak ada di profil — diturunkan dari baris standings sekolah /
+  // kabupaten yang cocok.
+  const mine = React.useMemo(() => {
+    const rows = results ?? [];
+    const row =
+      (me?.school_id && rows.find((r) => r.school_id === me.school_id)) ||
+      (me?.region_id && rows.find((r) => r.region_id === me.region_id)) ||
+      null;
+    return {
+      schoolId: me?.school_id ?? null,
+      regionKey: row ? regKey(row) : null,
+      provinceKey: row ? provKey(row) : null,
+    };
+  }, [results, me?.school_id, me?.region_id]);
+
+  // Level nasional: leaderboard provinsi.
+  const provinces = React.useMemo(
+    () =>
+      groupBy(results ?? [], provKey, (r) => r.province_name, regKey),
+    [results],
+  );
+
+  // Level provinsi: leaderboard kabupaten dalam provinsi terpilih.
+  const regencies = React.useMemo(() => {
+    if (!province) return [];
+    return groupBy(
+      (results ?? []).filter((r) => provKey(r) === province.key),
+      regKey,
+      (r) => r.region_name,
+    );
+  }, [results, province]);
+
+  // Level kabupaten: leaderboard sekolah dalam kabupaten terpilih.
+  const schools = React.useMemo(() => {
+    if (!region) return [];
+    return [...(results ?? [])]
+      .filter(
+        (r) =>
+          regKey(r) === region.key &&
+          (!province || provKey(r) === province.key),
+      )
+      .sort((a, b) => b.points - a.points || a.school_name.localeCompare(b.school_name));
+  }, [results, region, province]);
+
+  function selectRound(id: string) {
+    setSelected(id);
+    setProvince(null);
+    setRegion(null);
+    setSchool(null);
+  }
+
+  function back() {
+    if (school) return setSchool(null);
+    if (region) return setRegion(null);
+    if (province) return setProvince(null);
+  }
+
+  const crumbs: { label: string; onClick?: () => void }[] = [
+    {
+      label: t.national,
+      onClick: () => {
+        setProvince(null);
+        setRegion(null);
+        setSchool(null);
+      },
+    },
+    ...(province
+      ? [
+          {
+            label: province.name,
+            onClick: () => {
+              setRegion(null);
+              setSchool(null);
+            },
+          },
+        ]
+      : []),
+    ...(region ? [{ label: region.name, onClick: () => setSchool(null) }] : []),
+    ...(school ? [{ label: school.name }] : []),
+  ];
+
+  const levelHint = school
+    ? t.levelHintStudent
+    : region
+      ? t.levelHintSchool
+      : province
+        ? t.levelHintRegency
+        : t.levelHintProvince;
 
   return (
     <div className="min-h-screen">
@@ -47,25 +321,19 @@ export default function PublicRoundsPage() {
       <EventClosedOverlay />
       <Navbar />
 
-      <main className="container space-y-6 py-8">
+      <main className="container max-w-3xl space-y-6 py-8">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <Flag className="h-6 w-6 text-primary" />
-            Hasil Gelombang
+            {t.title}
           </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Adu voting antar sekolah per kabupaten. Sekolah teratas lolos ke
-            gelombang berikutnya.
-          </p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t.subtitle}</p>
         </div>
 
         {isLoading ? (
           <LoadingState />
         ) : !rounds || rounds.length === 0 ? (
-          <EmptyState
-            title="Belum ada gelombang"
-            description="Nantikan pengumuman dari panitia."
-          />
+          <EmptyState title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
           <>
             {/* Pemilih gelombang */}
@@ -73,7 +341,7 @@ export default function PublicRoundsPage() {
               {rounds.map((r) => (
                 <button
                   key={r.id}
-                  onClick={() => setSelected(r.id)}
+                  onClick={() => selectRound(r.id)}
                   className={cn(
                     "cursor-pointer rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
                     selected === r.id
@@ -91,61 +359,155 @@ export default function PublicRoundsPage() {
 
             {round?.status === "active" && (
               <div className="rounded-xl border border-primary/25 bg-primary/5 p-3 text-center text-sm font-medium text-primary">
-                Gelombang ini masih berlangsung - klasemen live, hasil bisa
-                berubah. Terus dukung sekolahmu!
+                {t.votingLive}
               </div>
             )}
 
-            {loadingResults ? (
-              <div className="flex justify-center py-10">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : groups.length === 0 ? (
-              <EmptyState title="Belum ada sekolah di gelombang ini" />
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {groups.map(([region, rows]) => (
-                  <Card key={region}>
-                    <CardContent className="space-y-2 p-4">
-                      <p className="flex items-center gap-2 font-semibold">
-                        <Trophy className="h-4 w-4 text-accent" />
-                        {region}
-                      </p>
-                      <div className="space-y-1.5">
-                        {rows.map((row, i) => (
-                          <div
-                            key={row.school_id}
-                            className={cn(
-                              "flex items-center justify-between gap-2 rounded-lg border p-2.5 text-sm",
-                              row.status === "lolos" &&
-                                "border-emerald-500/40 bg-emerald-500/5",
-                              row.status === "gugur" && "opacity-60",
-                            )}
-                          >
-                            <div className="flex min-w-0 items-center gap-2">
-                              <span className="w-6 shrink-0 text-center text-xs font-bold text-muted-foreground">
-                                {i + 1}
-                              </span>
-                              <span className="truncate font-medium">
-                                {row.school_name}
-                              </span>
-                              {row.status === "lolos" && (
-                                <Badge variant="success">Lolos</Badge>
-                              )}
-                              {row.status === "gugur" && (
-                                <Badge variant="secondary">Gugur</Badge>
-                              )}
-                            </div>
-                            <span className="shrink-0 font-semibold tabular-nums text-primary">
-                              {formatNumber(row.points)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+            {/* Breadcrumb drill-down */}
+            <Card>
+              <CardContent className="space-y-4 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  {(province || region || school) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={back}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      {t.back}
+                    </Button>
+                  )}
+                  <nav className="flex flex-wrap items-center gap-1 text-sm">
+                    {crumbs.map((c, i) => {
+                      const last = i === crumbs.length - 1;
+                      return (
+                        <React.Fragment key={`${c.label}-${i}`}>
+                          {i > 0 && (
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                          )}
+                          {last || !c.onClick ? (
+                            <span className="font-semibold">{c.label}</span>
+                          ) : (
+                            <button
+                              onClick={c.onClick}
+                              className="cursor-pointer text-muted-foreground hover:text-primary hover:underline"
+                            >
+                              {c.label}
+                            </button>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </nav>
+                </div>
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {school ? (
+                    <Users className="h-3.5 w-3.5" />
+                  ) : region ? (
+                    <SchoolIcon className="h-3.5 w-3.5" />
+                  ) : (
+                    <MapPin className="h-3.5 w-3.5" />
+                  )}
+                  {levelHint}
+                </p>
+
+                {loadingResults ? (
+                  <div className="flex justify-center py-10">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (results ?? []).length === 0 ? (
+                  <EmptyState title={t.emptySchoolsInBoard} />
+                ) : school ? (
+                  /* Level 4: siswa */
+                  <StudentBoard schoolId={school.key} />
+                ) : region ? (
+                  /* Level 3: sekolah */
+                  <div className="space-y-2">
+                    <ListHeader label={t.school} />
+                    {schools.map((row, i) => (
+                      <button
+                        key={row.school_id}
+                        onClick={() =>
+                          setSchool({ key: row.school_id, name: row.school_name })
+                        }
+                        className={cn(
+                          "flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border p-3 text-left text-sm transition-colors hover:border-primary/40 hover:bg-primary/5",
+                          row.status === "lolos" &&
+                            "border-emerald-500/40 bg-emerald-500/5",
+                          row.status === "gugur" && "opacity-60",
+                          podiumRowClass(i + 1),
+                          row.school_id === mine.schoolId &&
+                            "border-primary/50 bg-primary/5 ring-1 ring-inset ring-primary/30",
+                        )}
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <RankMedal rank={i + 1} />
+                          <span className="truncate font-semibold">
+                            {row.school_name}
+                          </span>
+                          {row.school_id === mine.schoolId && (
+                            <MineBadge label={t.yourSchool} />
+                          )}
+                          {row.status === "lolos" && (
+                            <Badge variant="success">{t.passed}</Badge>
+                          )}
+                          {row.status === "gugur" && (
+                            <Badge variant="secondary">{t.eliminated}</Badge>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="font-semibold tabular-nums text-primary">
+                            {formatNumber(row.points)}
+                          </span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : province ? (
+                  /* Level 2: kabupaten */
+                  <div className="space-y-2">
+                    <ListHeader label={t.regency} />
+                    {regencies.map((g, i) => (
+                      <GroupRow
+                        key={g.key}
+                        rank={i + 1}
+                        group={g}
+                        childLabel={t.regencyChildLabel}
+                        mineLabel={
+                          g.key === mine.regionKey ? t.yourRegency : undefined
+                        }
+                        onClick={() => setRegion({ key: g.key, name: g.name })}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  /* Level 1: provinsi (nasional) */
+                  <div className="space-y-2">
+                    <ListHeader label={t.province} />
+                    {provinces.map((g, i) => (
+                      <GroupRow
+                        key={g.key}
+                        rank={i + 1}
+                        group={g}
+                        childLabel={t.regencyChildLabel}
+                        mineLabel={
+                          g.key === mine.provinceKey ? t.yourProvince : undefined
+                        }
+                        onClick={() => setProvince({ key: g.key, name: g.name })}
+                      />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {!school && !region && (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Trophy className="h-3.5 w-3.5 text-accent" />
+                {t.regionPointsNote}
+              </p>
             )}
           </>
         )}
