@@ -44,6 +44,7 @@ import {
   useQuests,
   useSettings,
   useVoterToday,
+  submitCouponClaim,
 } from "@/lib/queries";
 import { CheckCircle2, ExternalLink } from "lucide-react";
 import { api } from "@/lib/api-client";
@@ -71,6 +72,8 @@ export default function PublicParticipantPage({
   const t = useTranslation("peserta");
   // Pop-up zoom foto peserta (latar halaman diblur).
   const [photoOpen, setPhotoOpen] = React.useState(false);
+  // Dialog klaim kupon undian — otomatis terbuka begitu vote sukses.
+  const [claimOpen, setClaimOpen] = React.useState(false);
   const anonVoter = useVoterForm();
   const { data: me } = useMyProfile();
   const { data: quests } = useQuests(true);
@@ -107,6 +110,7 @@ export default function PublicParticipantPage({
   const isParticipant = !!me?.is_participant;
   const locked = !!me && ((me.role === "voter" && me.onboarded) || isParticipant);
   const followed = !!me?.followed;
+  const waFollowed = !!me?.wa_followed;
   const voter: VoterCtx = locked
     ? {
         ...anonVoter,
@@ -259,10 +263,17 @@ export default function PublicParticipantPage({
                     participantName={participant.name}
                     voter={voter}
                     locked={locked}
-                    followed={followed || isParticipant}
+                    waFollowed={waFollowed || isParticipant}
                     gate={gate}
                     disabled={eventClosed}
-                    onVoted={() => refetch()}
+                    onVoted={() => {
+                      refetch();
+                      // Kupon undian sudah otomatis untuk peserta YCS / voter
+                      // yang follow IG/TikTok-nya sudah terverifikasi — selain
+                      // itu, langsung tawarkan klaim kupon begitu vote
+                      // terkirim (tak perlu tunggu admin approve bukti WA).
+                      if (!isParticipant && !followed) setClaimOpen(true);
+                    }}
                   />
                 )}
                 <p className="text-center text-xs text-muted-foreground">
@@ -279,6 +290,12 @@ export default function PublicParticipantPage({
                 onClose={() => setPhotoOpen(false)}
               />
             )}
+
+            <ClaimCouponDialog
+              open={claimOpen}
+              onOpenChange={setClaimOpen}
+              onClaimed={() => refetch()}
+            />
 
             {quests && quests.length > 0 && (
             <section>
@@ -316,24 +333,20 @@ export default function PublicParticipantPage({
 type VoterCtx = ReturnType<typeof useVoterForm>;
 
 /**
- * Tugas follow wajib sebelum vote pertama — masing-masing upload bukti.
- * Key HARUS sinkron dengan REQUIRED_FOLLOW_TASKS di backend.
+ * Tugas follow IG/TikTok — syarat KLAIM KUPON undian HP (setelah vote sukses,
+ * terpisah dari vote itu sendiri).
  */
 const FOLLOW_TASK_URLS = [
   "https://tiktok.com/@stekomuniversity",
   "https://instagram.com/universitasstekom",
   "https://tiktok.com/@toploker.com",
   "https://instagram.com/toplokercom",
-  "https://whatsapp.com/channel/0029VaYIG217oQhhUoA3a915",
-  "https://whatsapp.com/channel/0029Vb5vVIaId7nEqecJ1I1G",
 ];
 const FOLLOW_TASK_KEYS = [
   "stekom_tiktok",
   "stekom_ig",
   "toploker_tiktok",
   "toploker_ig",
-  "wa_stekom",
-  "wa_ycs",
 ];
 
 function useFollowTasks(t: Dictionary["peserta"]) {
@@ -345,9 +358,177 @@ function useFollowTasks(t: Dictionary["peserta"]) {
   }));
 }
 
+/**
+ * Tugas follow 2 saluran WhatsApp — syarat VOTE pertama (wajib sebelum vote
+ * diterima). Key HARUS sinkron dengan REQUIRED_FOLLOW_TASKS di backend.
+ */
+const WA_FOLLOW_TASK_URLS = [
+  "https://whatsapp.com/channel/0029VaYIG217oQhhUoA3a915",
+  "https://whatsapp.com/channel/0029Vb5vVIaId7nEqecJ1I1G",
+];
+const WA_FOLLOW_TASK_KEYS = ["wa_stekom", "wa_ycs"];
+
+function useWaFollowTasks(t: Dictionary["peserta"]) {
+  return t.waFollowTasks.map((task, i) => ({
+    key: WA_FOLLOW_TASK_KEYS[i],
+    title: task.title,
+    url: WA_FOLLOW_TASK_URLS[i],
+    linkLabel: task.linkLabel,
+  }));
+}
+
 function validateVoter(data: VoterFormData, t: Dictionary["peserta"]): string | null {
   const r = voterInfoSchema.safeParse(data);
   return r.success ? null : r.error.issues[0]?.message ?? t.incompleteData;
+}
+
+/**
+ * Klaim kupon undian handphone: follow akun Univ STEKOM/TopLoker + upload
+ * bukti, TERPISAH dari vote (vote sudah sukses sebelum dialog ini muncul).
+ */
+function ClaimCouponDialog({
+  open,
+  onOpenChange,
+  onClaimed,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onClaimed: () => void;
+}) {
+  const t = useTranslation("peserta");
+  const followTasks = useFollowTasks(t);
+  const MAX_PROOFS = 12;
+  const [proofFiles, setProofFiles] = React.useState<File[]>([]);
+  const [busy, setBusy] = React.useState(false);
+  const qc = useQueryClient();
+
+  async function uploadProof(file: File): Promise<string> {
+    const img = await compressImage(file, { maxSize: 900, quality: 0.7 });
+    const fd = new FormData();
+    fd.append("file", img);
+    const up = await api<{ url: string }>("/api/upload-proof", {
+      method: "POST",
+      body: fd,
+    });
+    return new URL(up.url, window.location.origin).toString();
+  }
+
+  async function submitClaim() {
+    if (proofFiles.length === 0) {
+      toast.error(t.uploadProofFirst);
+      return;
+    }
+    setBusy(true);
+    try {
+      const proofs: string[] = [];
+      try {
+        for (const f of proofFiles) proofs.push(await uploadProof(f));
+      } catch (err) {
+        toast.error(
+          t.uploadProofFailed(err instanceof Error ? err.message : ""),
+        );
+        return;
+      }
+      await submitCouponClaim(proofs);
+      toast.success(t.claimSubmitted);
+      qc.invalidateQueries({ queryKey: ["coupon-claim"] });
+      qc.invalidateQueries({ queryKey: ["profile", "me"] });
+      setProofFiles([]);
+      onOpenChange(false);
+      onClaimed();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t.voteFailed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t.followTaskDialogTitle}</DialogTitle>
+          <DialogDescription>
+            {t.followTaskDialogDescription(followTasks.length)}
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Daftar tugas: klik untuk membuka akun/saluran yang harus di-follow. */}
+        <div className="max-h-[35vh] space-y-1.5 overflow-y-auto pr-1">
+          {followTasks.map((task, i) => (
+            <a
+              key={task.key}
+              href={task.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between gap-2 rounded-lg border p-2.5 text-sm transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              <span className="min-w-0 truncate font-medium">
+                {i + 1}. {task.title}
+              </span>
+              <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </a>
+          ))}
+        </div>
+
+        {/* Satu tombol upload untuk semua bukti — boleh pilih banyak sekaligus. */}
+        <div className="space-y-1.5">
+          <Label>{t.screenshotProofLabel}</Label>
+          <Input
+            type="file"
+            accept="image/*"
+            multiple
+            disabled={proofFiles.length >= MAX_PROOFS}
+            onChange={(e) => {
+              const picked = Array.from(e.target.files ?? []);
+              setProofFiles((prev) => {
+                const merged = [...prev];
+                for (const f of picked) {
+                  if (
+                    merged.length < MAX_PROOFS &&
+                    !merged.some((x) => x.name === f.name && x.size === f.size)
+                  )
+                    merged.push(f);
+                }
+                return merged;
+              });
+              e.target.value = ""; // reset agar bisa pilih lagi
+            }}
+          />
+          {proofFiles.length > 0 && (
+            <ul className="space-y-1">
+              {proofFiles.map((f, i) => (
+                <li
+                  key={i}
+                  className="flex items-center justify-between gap-2 rounded-md border px-2 py-1 text-xs"
+                >
+                  <span className="min-w-0 truncate">{f.name}</span>
+                  <button
+                    type="button"
+                    className="shrink-0 text-destructive"
+                    onClick={() =>
+                      setProofFiles((prev) => prev.filter((_, j) => j !== i))
+                    }
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              ))}
+              <li className="text-xs text-muted-foreground">
+                {proofFiles.length}/{MAX_PROOFS} {t.files}
+              </li>
+            </ul>
+          )}
+        </div>
+
+        <p className="text-xs text-muted-foreground">{t.proofNote}</p>
+        <Button onClick={submitClaim} disabled={busy || proofFiles.length === 0}>
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+          {t.sendProofAndVote(proofFiles.length)}
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function ShareButton({ name }: { name: string }) {
@@ -382,7 +563,7 @@ function VoteDialog({
   participantName,
   voter,
   locked,
-  followed,
+  waFollowed,
   gate,
   disabled,
   onVoted,
@@ -392,18 +573,18 @@ function VoteDialog({
   voter: VoterCtx;
   /** Voter login + onboarded: identitas dari profil, tanpa form/konfirmasi. */
   locked: boolean;
-  /** Sudah pernah konfirmasi follow akun STEKOM (sekali seumur event). */
-  followed: boolean;
+  /** Sudah pernah konfirmasi follow 2 saluran WA (sekali seumur event). */
+  waFollowed: boolean;
   /** Belum boleh vote (belum login / belum wizard / bukan voter). */
   gate: (() => void) | null;
   disabled: boolean;
+  /** Vote sukses (terkirim, terlepas pending/approved bukti follow WA). */
   onVoted: () => void;
 }) {
   const t = useTranslation("peserta");
-  const followTasks = useFollowTasks(t);
+  const waFollowTasks = useWaFollowTasks(t);
   const [open, setOpen] = React.useState(false);
-  const [showFollow, setShowFollow] = React.useState(false);
-  // Screenshot bukti follow — satu tombol upload, boleh banyak sekaligus.
+  const [showWaFollow, setShowWaFollow] = React.useState(false);
   const MAX_PROOFS = 12;
   const [proofFiles, setProofFiles] = React.useState<File[]>([]);
   const [busy, setBusy] = React.useState(false);
@@ -415,9 +596,9 @@ function VoteDialog({
     // Locked = identitas dari akun/record peserta (backend sumber kebenaran),
     // tak perlu validasi form manual.
     if (locked) {
-      // Vote pertama (harian / favorit): wajib follow akun Univ STEKOM dulu (sekali).
-      if (!followed) {
-        setShowFollow(true);
+      // Vote pertama: wajib follow 2 saluran WA dulu (sekali seumur event).
+      if (!waFollowed) {
+        setShowWaFollow(true);
         return;
       }
       void doSubmit();
@@ -455,7 +636,7 @@ function VoteDialog({
   async function doSubmit(followConfirmed = false) {
     setBusy(true);
     try {
-      // Follow pertama: upload semua screenshot bukti (satu tombol, multi).
+      // Follow WA pertama: upload semua screenshot bukti (satu tombol, multi).
       let followProofs: string[] | undefined;
       if (followConfirmed) {
         if (proofFiles.length === 0) {
@@ -500,20 +681,14 @@ function VoteDialog({
       // Refresh label "sudah kamu vote" di card & halaman peserta.
       qc.invalidateQueries({ queryKey: ["voter-today"] });
       if (data.pending) {
-        // Bukti follow direview admin dulu — poin & kupon menyusul.
+        // Bukti follow WA direview admin dulu — poin masuk setelah di-approve.
         toast.success(t.votePendingSuccess);
-        trackEvent("follow_confirmed");
         qc.invalidateQueries({ queryKey: ["profile", "me"] });
-      } else if (followConfirmed) {
-        toast.success(t.voteWithCouponSuccess);
-        trackEvent("follow_confirmed");
-        qc.invalidateQueries({ queryKey: ["profile", "me"] });
-        qc.invalidateQueries({ queryKey: ["my-coupons"] });
       } else {
         toast.success(t.voteSuccess(pts, participantName));
       }
       setOpen(false);
-      setShowFollow(false);
+      setShowWaFollow(false);
       onVoted();
     } finally {
       setBusy(false);
@@ -539,18 +714,17 @@ function VoteDialog({
   if (locked) {
     return (
       <>
-      <Dialog open={showFollow} onOpenChange={setShowFollow}>
+      <Dialog open={showWaFollow} onOpenChange={setShowWaFollow}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t.followTaskDialogTitle}</DialogTitle>
+            <DialogTitle>{t.waFollowDialogTitle}</DialogTitle>
             <DialogDescription>
-              {t.followTaskDialogDescription(followTasks.length)}
+              {t.waFollowDialogDescription(waFollowTasks.length)}
             </DialogDescription>
           </DialogHeader>
 
-          {/* Daftar tugas: klik untuk membuka akun/saluran yang harus di-follow. */}
-          <div className="max-h-[35vh] space-y-1.5 overflow-y-auto pr-1">
-            {followTasks.map((task, i) => (
+          <div className="space-y-1.5">
+            {waFollowTasks.map((task, i) => (
               <a
                 key={task.key}
                 href={task.url}
@@ -566,7 +740,6 @@ function VoteDialog({
             ))}
           </div>
 
-          {/* Satu tombol upload untuk semua bukti — boleh pilih banyak sekaligus. */}
           <div className="space-y-1.5">
             <Label>{t.screenshotProofLabel}</Label>
             <Input
@@ -616,15 +789,12 @@ function VoteDialog({
             )}
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            {t.proofNote}
-          </p>
           <Button
             onClick={() => doSubmit(true)}
             disabled={busy || proofFiles.length === 0}
           >
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            {t.sendProofAndVote(proofFiles.length)}
+            {t.sendProofAndVoteWa(proofFiles.length)}
           </Button>
         </DialogContent>
       </Dialog>

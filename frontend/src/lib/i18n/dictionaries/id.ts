@@ -230,9 +230,9 @@ const id = {
       "Setiap kamu vote & follow akun Universitas STEKOM, kamu otomatis dapat kupon undian berhadiah handphone.",
     prizeBannerCta: "Lihat Cara Dapat Kupon",
     prizeDialogTitle: "Cara Dapat Kupon Undian Handphone",
-    prizeDialogStep1: "Pilih peserta favoritmu di bagian Daftar Peserta di bawah.",
-    prizeDialogStep2: "Klik Dukung, lalu follow akun Universitas STEKOM dan upload buktinya.",
-    prizeDialogStep3: "Selesai! Kupon undian otomatis masuk ke akunmu, cek di menu Kupon Saya.",
+    prizeDialogStep1: "Pilih peserta favoritmu di bagian Daftar Peserta di bawah, lalu klik Dukung.",
+    prizeDialogStep2: "Setelah vote berhasil, klaim kupon undian: follow akun Universitas STEKOM dan upload buktinya.",
+    prizeDialogStep3: "Selesai! Kupon undian masuk ke akunmu setelah bukti disetujui admin, cek di menu Kupon Saya.",
     prizeDialogCta: "Vote Sekarang",
     rankingCta: "Peringkat Sementara",
     joinCta: "Jadi Peserta YCS",
@@ -436,20 +436,19 @@ const id = {
     uploadProofFirst: "Upload screenshot bukti tugas follow dulu.",
     uploadProofFailed: (msg: string) => `Gagal mengunggah bukti: ${msg}`,
     voteFailed: "Gagal memberikan dukungan.",
-    votePendingSuccess:
-      "Vote terkirim! Bukti follow kamu sedang direview admin — poin masuk setelah di-approve.",
-    voteWithCouponSuccess: "Vote terkirim. Kupon undian handphone masuk ke akunmu!",
+    claimSubmitted:
+      "Klaim kupon terkirim! Bukti follow-mu sedang direview admin.",
     voteSuccess: (points: number, name: string) => `+${points} terkirim untuk ${name}`,
     eventClosed: "Event ditutup",
     support: "Dukung",
-    followTaskDialogTitle: "Kerjakan tugas follow, dapat kupon undian",
+    followTaskDialogTitle: "Klaim Kupon Undian Handphone",
     followTaskDialogDescription: (n: number) =>
-      `Sekali saja untuk seluruh event. Kerjakan ${n} tugas di bawah, upload bukti per tugas, lalu kirim. Bukti direview admin — vote & kupon undianmu sah setelah di-approve.`,
+      `Vote kamu sudah masuk! Follow ${n} akun di bawah, upload bukti, lalu kirim untuk klaim kupon undian handphone. Bukti direview admin — kuponmu sah setelah di-approve.`,
     screenshotProofLabel: "Screenshot Bukti (boleh pilih banyak sekaligus)",
     files: "file",
     proofNote:
-      "Upload screenshot yang menunjukkan kamu sudah follow/mengikuti semua akun di atas. Poin vote masuk ke peserta setelah bukti di-approve admin.",
-    sendProofAndVote: (n: number) => `Kirim bukti & vote (${n} file)`,
+      "Upload screenshot yang menunjukkan kamu sudah follow/mengikuti semua akun di atas. Kupon undian masuk ke akunmu setelah bukti di-approve admin.",
+    sendProofAndVote: (n: number) => `Kirim Klaim Kupon (${n} file)`,
     supportName: (name: string) => `Dukung ${name}`,
     sendSupport: "Kirim Dukungan",
     followTasks: [
@@ -469,6 +468,8 @@ const id = {
         title: "Follow Instagram TopLoker.com",
         linkLabel: "@toplokercom",
       },
+    ],
+    waFollowTasks: [
       {
         title: "Ikuti Saluran WhatsApp UnivSTEKOM",
         linkLabel: "Saluran UnivSTEKOM",
@@ -478,6 +479,12 @@ const id = {
         linkLabel: "Saluran YCS 2026",
       },
     ],
+    waFollowDialogTitle: "Follow Saluran WhatsApp untuk Vote",
+    waFollowDialogDescription: (n: number) =>
+      `Wajib follow ${n} saluran WhatsApp di bawah sebelum vote pertamamu diproses. Upload bukti, lalu kirim. Vote masuk setelah bukti di-approve admin.`,
+    sendProofAndVoteWa: (n: number) => `Kirim Bukti & Vote (${n} file)`,
+    votePendingSuccess:
+      "Vote terkirim! Bukti follow WA-mu sedang direview admin — poin masuk setelah di-approve.",
     chooseContentFirst: "Pilih konten peserta dulu.",
     invalidLink: "Masukkan link postingan yang valid (mulai http).",
     chooseAtLeastOneFile: "Pilih minimal 1 file bukti.",

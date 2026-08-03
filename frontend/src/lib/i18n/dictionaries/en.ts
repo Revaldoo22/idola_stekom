@@ -232,9 +232,9 @@ const en: Dictionary = {
       "Every time you vote & follow the Universitas STEKOM account, you automatically get a raffle coupon for a chance to win a smartphone.",
     prizeBannerCta: "See How to Get a Coupon",
     prizeDialogTitle: "How to Get a Smartphone Raffle Coupon",
-    prizeDialogStep1: "Choose your favorite participant in the Participant List section below.",
-    prizeDialogStep2: "Click Support, then follow the Universitas STEKOM account and upload proof.",
-    prizeDialogStep3: "Done! Your raffle coupon is added to your account automatically — check it in the My Coupons menu.",
+    prizeDialogStep1: "Choose your favorite participant in the Participant List section below, then click Support.",
+    prizeDialogStep2: "After your vote succeeds, claim your raffle coupon: follow the Universitas STEKOM account and upload proof.",
+    prizeDialogStep3: "Done! Your raffle coupon is added to your account once your proof is approved by admin — check it in the My Coupons menu.",
     prizeDialogCta: "Vote Now",
     rankingCta: "Current Standings",
     joinCta: "Become a YCS Participant",
@@ -438,20 +438,19 @@ const en: Dictionary = {
     uploadProofFirst: "Upload a screenshot proof of the follow task first.",
     uploadProofFailed: (msg: string) => `Failed to upload proof: ${msg}`,
     voteFailed: "Failed to give support.",
-    votePendingSuccess:
-      "Vote submitted! Your follow proof is being reviewed by the admin — points will be added once approved.",
-    voteWithCouponSuccess: "Vote submitted. A smartphone raffle coupon has been added to your account!",
+    claimSubmitted:
+      "Coupon claim submitted! Your follow proof is being reviewed by the admin.",
     voteSuccess: (points: number, name: string) => `+${points} submitted for ${name}`,
     eventClosed: "Event closed",
     support: "Support",
-    followTaskDialogTitle: "Complete the follow tasks, get a raffle coupon",
+    followTaskDialogTitle: "Claim Your Smartphone Raffle Coupon",
     followTaskDialogDescription: (n: number) =>
-      `Just once for the whole event. Complete the ${n} tasks below, upload proof per task, then submit. Proof is reviewed by admin — your vote & raffle coupon are valid once approved.`,
+      `Your vote is in! Follow the ${n} accounts below, upload proof, then submit to claim your smartphone raffle coupon. Proof is reviewed by admin — your coupon is valid once approved.`,
     screenshotProofLabel: "Screenshot Proof (you can select multiple at once)",
     files: "files",
     proofNote:
-      "Upload a screenshot showing you've followed/joined all the accounts above. Vote points go to the participant once your proof is approved by the admin.",
-    sendProofAndVote: (n: number) => `Submit proof & vote (${n} files)`,
+      "Upload a screenshot showing you've followed/joined all the accounts above. The raffle coupon is added to your account once your proof is approved by the admin.",
+    sendProofAndVote: (n: number) => `Submit Coupon Claim (${n} files)`,
     supportName: (name: string) => `Support ${name}`,
     sendSupport: "Send Support",
     followTasks: [
@@ -471,6 +470,8 @@ const en: Dictionary = {
         title: "Follow TopLoker.com on Instagram",
         linkLabel: "@toplokercom",
       },
+    ],
+    waFollowTasks: [
       {
         title: "Join UnivSTEKOM's WhatsApp Channel",
         linkLabel: "UnivSTEKOM Channel",
@@ -480,6 +481,12 @@ const en: Dictionary = {
         linkLabel: "YCS 2026 Channel",
       },
     ],
+    waFollowDialogTitle: "Follow WhatsApp Channels to Vote",
+    waFollowDialogDescription: (n: number) =>
+      `You must follow the ${n} WhatsApp channels below before your first vote is processed. Upload proof, then submit. Your vote goes through once proof is approved by admin.`,
+    sendProofAndVoteWa: (n: number) => `Submit Proof & Vote (${n} files)`,
+    votePendingSuccess:
+      "Vote submitted! Your WhatsApp follow proof is being reviewed by admin — points will be added once approved.",
     chooseContentFirst: "Choose a participant's content first.",
     invalidLink: "Enter a valid post link (starting with http).",
     chooseAtLeastOneFile: "Choose at least 1 proof file.",
