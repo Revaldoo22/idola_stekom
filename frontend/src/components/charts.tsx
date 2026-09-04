@@ -7,6 +7,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Line,
   LineChart,
   Pie,
@@ -44,7 +45,7 @@ export function PointGrowthChart({
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} minTickGap={24} tickMargin={6} />
+        <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} minTickGap={8} tickMargin={6} />
         <YAxis fontSize={12} allowDecimals={false} />
         <Tooltip
           contentStyle={tooltipStyle}
@@ -72,7 +73,7 @@ export function DailyVotesChart({
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} minTickGap={24} tickMargin={6} />
+        <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} minTickGap={8} tickMargin={6} />
         <YAxis fontSize={12} allowDecimals={false} />
         <Tooltip
           contentStyle={tooltipStyle}
@@ -85,28 +86,61 @@ export function DailyVotesChart({
   );
 }
 
+/**
+ * Dua garis harian: akun voter baru vs orang yang benar-benar vote hari itu.
+ * Bukan akumulasi, supaya naik-turun aktivitas per hari terlihat. Jarak
+ * kedua garis menunjukkan berapa akun yang mendaftar tapi tak ikut vote.
+ */
 export function VoterGrowthChart({
   data,
 }: {
-  data: { day: string; cumulative: number }[];
+  data: { day: string; accounts: number; voters: number }[];
 }) {
   return (
     <ResponsiveContainer width="100%" height={260}>
       <LineChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <XAxis dataKey="day" tickFormatter={fmtDay} fontSize={12} minTickGap={24} tickMargin={6} />
+        {/* interval={0} memaksa SEMUA tanggal tampil. Rentangnya dikunci
+            7 hari, jadi labelnya pasti muat dan tak ada hari yang
+            terlewat seperti saat recharts menyeleksi sendiri. */}
+        <XAxis
+          dataKey="day"
+          tickFormatter={fmtDay}
+          fontSize={12}
+          interval={0}
+          tickMargin={6}
+        />
         <YAxis fontSize={12} allowDecimals={false} />
         <Tooltip
           contentStyle={tooltipStyle}
           labelFormatter={(l) => fmtDay(l as string)}
-          formatter={(v) => [`${v} voter`, "Kumulatif"]}
+          formatter={(v, name) => [
+            `${v} orang`,
+            name === "accounts" ? "Akun baru" : "Vote hari itu",
+          ]}
         />
+        <Legend
+          verticalAlign="top"
+          height={28}
+          formatter={(v) => (v === "accounts" ? "Akun baru" : "Vote hari itu")}
+          wrapperStyle={{ fontSize: 12 }}
+        />
+        {/* type="linear", bukan monotone: ini data harian, jadi garis
+            melengkung menyiratkan ada nilai di antara tanggal padahal tidak.
+            Titik ditampilkan supaya nilai tiap hari terlihat jelas. */}
         <Line
-          type="monotone"
-          dataKey="cumulative"
+          type="linear"
+          dataKey="accounts"
           stroke="hsl(192 91% 36%)"
           strokeWidth={2}
-          dot={false}
+          dot={{ r: 3 }}
+        />
+        <Line
+          type="linear"
+          dataKey="voters"
+          stroke="hsl(24 95% 53%)"
+          strokeWidth={2}
+          dot={{ r: 3 }}
         />
       </LineChart>
     </ResponsiveContainer>

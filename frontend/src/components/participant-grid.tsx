@@ -8,6 +8,8 @@ import {
   ChevronRight,
   Globe2,
   MapPin,
+  Medal,
+  Zap,
   School as SchoolIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -58,16 +60,14 @@ export function ParticipantGrid() {
   const [page, setPage] = React.useState(initial.page);
   const [scope, setScope] = React.useState<Scope>(initial.scope ?? "all");
 
-  // Filter lingkup muncul selama akun login punya identitas sekolah/daerah —
+  // Filter lingkup muncul selama akun login punya identitas sekolah/daerah,
   // baik voter yang sudah onboarding maupun peserta (email cocok record
   // peserta → school_id/region_id terisi dari /me walau belum onboarding).
-  // Jangan timpa lingkup hasil restore dari URL.
+  // Default tetap "Semua" walau voter punya sekolah/daerah; scope lain
+  // hanya aktif kalau dipilih manual atau di-restore dari URL.
   const voterReady = !!me && (!!me.school_id || !!me.region_id);
-  React.useEffect(() => {
-    if (voterReady && me?.school_id && !initial.scope) setScope("school");
-  }, [voterReady, me?.school_id, initial.scope]);
 
-  // Reset halaman saat cari/lingkup berubah — skip render pertama supaya
+  // Reset halaman saat cari/lingkup berubah, skip render pertama supaya
   // page hasil restore tidak langsung ke-reset.
   const firstRun = React.useRef(true);
   React.useEffect(() => {
@@ -78,7 +78,7 @@ export function ParticipantGrid() {
     setPage(1);
   }, [search, scope]);
 
-  // Tulis balik state ke URL (replaceState — tanpa nambah riwayat browser).
+  // Tulis balik state ke URL (replaceState, tanpa nambah riwayat browser).
   React.useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     sp.delete("q");
@@ -186,14 +186,26 @@ export function ParticipantGrid() {
             const status = voteStatus.get(p.id);
             const voted = status === "approved";
             const pending = status === "pending";
+            // Sudah lolos gelombang / Golden Buzzer = berhenti berkompetisi,
+            // tak bisa di-vote. Golden Buzzer diprioritaskan tandanya.
+            const golden = !!p.golden_buzzer;
+            const qualified = !!p.qualified || golden;
             return (
             <Link key={p.id} href={`/peserta/${p.id}`} className="group">
               <Card
                 className={cn(
                   "card-lift h-full overflow-hidden rounded-2xl border-border/60",
-                  voted &&
+                  golden &&
                     "border-amber-400/80 ring-2 ring-amber-400/70 shadow-[0_0_22px_-2px_rgba(251,191,36,0.55)]",
-                  pending && "border-amber-400/50 ring-1 ring-amber-400/40",
+                  qualified &&
+                    !golden &&
+                    "border-emerald-500/70 ring-2 ring-emerald-500/60",
+                  !qualified &&
+                    voted &&
+                    "border-amber-400/80 ring-2 ring-amber-400/70 shadow-[0_0_22px_-2px_rgba(251,191,36,0.55)]",
+                  !qualified &&
+                    pending &&
+                    "border-amber-400/50 ring-1 ring-amber-400/40",
                 )}
               >
                 <div className="relative aspect-square w-full overflow-hidden bg-muted">
@@ -219,15 +231,29 @@ export function ParticipantGrid() {
                     </div>
                   )}
                   <span className="absolute right-2 top-2 rounded-full border border-white/30 bg-black/45 px-2.5 py-0.5 text-xs font-bold text-white backdrop-blur-sm">
-                    {formatNumber(p.total_points)} {t.points}
+                    {/* Poin gelombang berjalan bila ada, supaya angkanya
+                        sama dengan klasemen. */}
+                    {formatNumber(p.round_points ?? p.total_points)} {t.points}
                   </span>
-                  {voted && (
+                  {golden && (
+                    <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-amber-300/60 bg-gradient-to-r from-amber-400 to-yellow-300 px-2.5 py-0.5 text-xs font-bold text-amber-950 shadow-[0_0_12px_rgba(251,191,36,0.7)]">
+                      <Zap className="h-3.5 w-3.5" />
+                      {t.goldenBadge}
+                    </span>
+                  )}
+                  {qualified && !golden && (
+                    <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-emerald-300/60 bg-emerald-500 px-2.5 py-0.5 text-xs font-bold text-white shadow-sm">
+                      <Medal className="h-3.5 w-3.5" />
+                      {t.qualifiedBadge}
+                    </span>
+                  )}
+                  {!qualified && voted && (
                     <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-amber-300/60 bg-gradient-to-r from-amber-400 to-yellow-300 px-2.5 py-0.5 text-xs font-bold text-amber-950 shadow-[0_0_12px_rgba(251,191,36,0.7)]">
                       <BadgeCheck className="h-3.5 w-3.5" />
                       {t.votedBadge}
                     </span>
                   )}
-                  {pending && (
+                  {!qualified && pending && (
                     <span className="absolute left-2 top-2 rounded-full border border-amber-300/50 bg-black/45 px-2.5 py-0.5 text-xs font-bold text-amber-300 backdrop-blur-sm">
                       {t.pendingBadge}
                     </span>
@@ -242,10 +268,26 @@ export function ParticipantGrid() {
                   <div
                     className={cn(
                       "mt-2 flex items-center justify-end text-xs font-semibold",
-                      voted || pending ? "text-amber-500" : "text-primary",
+                      golden
+                        ? "text-amber-600"
+                        : qualified
+                          ? "text-emerald-600"
+                          : voted || pending
+                            ? "text-amber-500"
+                            : "text-primary",
                     )}
                   >
-                    {voted ? (
+                    {golden ? (
+                      <>
+                        <Zap className="mr-1 h-3.5 w-3.5" />
+                        {t.goldenLabel}
+                      </>
+                    ) : qualified ? (
+                      <>
+                        <Medal className="mr-1 h-3.5 w-3.5" />
+                        {t.qualifiedLabel}
+                      </>
+                    ) : voted ? (
                       <>
                         <BadgeCheck className="mr-1 h-3.5 w-3.5" />
                         {t.votedLabel}

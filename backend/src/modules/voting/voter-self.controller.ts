@@ -1,11 +1,27 @@
-import { Body, Controller, Get, Patch, Post, UseGuards } from "@nestjs/common";
-import { IsArray, IsOptional, IsUUID } from "class-validator";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
+import { IsArray, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 import { DataSource } from "typeorm";
 import { JwtGuard, JwtPayload } from "../../common/guards/jwt.guard";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { CouponClaimsService } from "./coupon-claims.service";
 import { ClaimCouponDto } from "./dto/voter-info.dto";
 import { mapError } from "./voting.controller";
+
+class TrackClickDto {
+  /** URL yang diklik; dipotong 500 karakter saat disimpan. */
+  @IsString()
+  @MaxLength(500)
+  url!: string;
+}
 
 class MarkReadDto {
   /** ID notifikasi yang ditandai dibaca. Kosong = tandai semua. */
@@ -57,6 +73,34 @@ export class VoterSelfController {
     return { items, unread };
   }
 
+  /**
+   * Catat klik tautan di notifikasi pengumuman. Dipanggil saat voter mengklik
+   * tautan di lonceng; kegagalan sengaja diabaikan di klien supaya klik tetap
+   * berjalan walau pencatatan gagal.
+   */
+  @Post("notifications/:id/click")
+  async trackClick(
+    @CurrentUser() user: JwtPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: TrackClickDto,
+  ) {
+    // Hanya notifikasi milik voter ini, dan hanya yang berasal dari
+    // pengumuman: mencegah pencatatan klik yang tak terkait.
+    const [row]: { announcement_id: string | null }[] = await this.db.query(
+      `select announcement_id from notifications
+        where id = $1 and profile_id = $2`,
+      [id, user.sub],
+    );
+    if (!row?.announcement_id) return { ok: true, tracked: false };
+
+    await this.db.query(
+      `insert into announcement_clicks (announcement_id, profile_id, url)
+       values ($1, $2, $3)`,
+      [row.announcement_id, user.sub, dto.url.slice(0, 500)],
+    );
+    return { ok: true, tracked: true };
+  }
+
   /** Tandai notifikasi sudah dibaca (ids tertentu atau semua bila kosong). */
   @Patch("notifications/read")
   async markRead(
@@ -79,11 +123,11 @@ export class VoterSelfController {
     return { ok: true };
   }
 
-  /** Kupon undian milik voter (dari follow). */
+  /** Kupon undian milik voter (dari follow), termasuk status menang undian. */
   @Get("coupons")
   coupons(@CurrentUser() user: JwtPayload) {
     return this.db.query(
-      `select c.code, c.source, c.created_at, pr.name as owner_name
+      `select c.code, c.source, c.created_at, c.won_at, c.prize, pr.name as owner_name
        from coupons c join profiles pr on pr.id = c.profile_id
        where c.profile_id = $1
        order by c.created_at desc`,

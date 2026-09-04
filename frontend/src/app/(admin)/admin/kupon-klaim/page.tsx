@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 12;
 
-/** Alasan penolakan cepat — admin bisa klik atau ketik sendiri. */
+/** Alasan penolakan cepat, admin bisa klik atau ketik sendiri. */
 const REJECT_TEMPLATES = [
   "Bukti follow tidak jelas / buram.",
   "Screenshot bukan bukti follow.",
@@ -43,7 +43,7 @@ const formatDateTime = (iso: string) =>
 
 type ClaimRow = {
   id: string;
-  status: "pending" | "approved";
+  status: "pending" | "approved" | "rejected";
   proofs: string[];
   created_at: string;
   reviewed_at: string | null;
@@ -51,6 +51,9 @@ type ClaimRow = {
   voter_name: string | null;
   voter_email: string | null;
   voter_phone: string | null;
+  /** Hanya pada tab "ditolak" (arsip): alasan & waktu penolakan. */
+  reason?: string | null;
+  rejected_at?: string | null;
 };
 
 /**
@@ -74,14 +77,40 @@ export default function AdminCouponClaimsPage() {
   const qc = useQueryClient();
   const confirm = useConfirm();
 
+  // Pencarian dikirim ke server (hasil dibatasi 500 baris di backend), jadi
+  // voter di luar 500 terbaru tetap ketemu. Ditunda sesaat agar tidak
+  // menembak request tiap ketikan.
+  const [debouncedSearch, setDebouncedSearch] = React.useState("");
+  React.useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  // Tab "ditolak" membaca ARSIP: baris klaim sudah dihapus saat ditolak
+  // (supaya voter bisa klaim ulang), jadi datanya dari tabel riwayat.
+  const rejectedTab = tab === "rejected";
+  const searchQs = debouncedSearch
+    ? `search=${encodeURIComponent(debouncedSearch)}`
+    : "";
+
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["admin-coupon-claims", tab],
-    queryFn: () => api<ClaimRow[]>(`/api/admin/coupon-claims?status=${tab}`),
+    queryKey: ["admin-coupon-claims", tab, debouncedSearch],
+    queryFn: () =>
+      api<ClaimRow[]>(
+        rejectedTab
+          ? `/api/admin/coupon-claims/rejections${
+              searchQs ? `?${searchQs}` : ""
+            }`
+          : `/api/admin/coupon-claims?status=${tab}${
+              searchQs ? `&${searchQs}` : ""
+            }`,
+      ),
+    placeholderData: (prev) => prev,
   });
   const { data: counts } = useQuery({
     queryKey: ["admin-coupon-claims-counts"],
     queryFn: () =>
-      api<{ pending: number; approved: number }>(
+      api<{ pending: number; approved: number; rejected: number }>(
         "/api/admin/coupon-claims/counts",
       ),
   });
@@ -120,7 +149,7 @@ export default function AdminCouponClaimsPage() {
   React.useEffect(() => {
     setPage(1);
     setSelected(new Set());
-  }, [tab, search]);
+  }, [tab, debouncedSearch]);
 
   const [processing, setProcessing] = React.useState<Set<string>>(new Set());
   async function act(
@@ -133,8 +162,8 @@ export default function AdminCouponClaimsPage() {
       await review.mutateAsync({ id, status, reason });
       toast.success(
         status === "approved"
-          ? "Klaim disetujui — kupon undian terbit."
-          : "Klaim ditolak — voter dapat pemberitahuan & bisa klaim ulang.",
+          ? "Klaim disetujui, kupon undian terbit."
+          : "Klaim ditolak, voter dapat pemberitahuan & bisa klaim ulang.",
       );
       setSelected((prev) => {
         const next = new Set(prev);
@@ -168,7 +197,7 @@ export default function AdminCouponClaimsPage() {
     if (ids.length === 0) return;
     try {
       const res = await bulkReview.mutateAsync({ ids, status: "rejected", reason });
-      toast.success(`${res.processed} klaim ditolak — voter diberi tahu.`);
+      toast.success(`${res.processed} klaim ditolak, voter diberi tahu.`);
       setSelected(new Set());
     } catch (e) {
       toast.error("Gagal memproses: " + (e as Error).message);
@@ -194,16 +223,8 @@ export default function AdminCouponClaimsPage() {
     });
   }
 
-  const filtered = React.useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return data ?? [];
-    return (data ?? []).filter(
-      (v) =>
-        v.voter_name?.toLowerCase().includes(q) ||
-        v.voter_email?.toLowerCase().includes(q) ||
-        v.voter_phone?.toLowerCase().includes(q),
-    );
-  }, [data, search]);
+  // Penyaringan sudah dilakukan server (lihat query di atas).
+  const filtered = data ?? [];
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   // Item berkurang (habis di-approve) → mundur ke halaman valid terakhir.
@@ -267,6 +288,12 @@ export default function AdminCouponClaimsPage() {
                 <Badge variant="success">{counts.approved}</Badge>
               ) : null}
             </TabsTrigger>
+            <TabsTrigger value="rejected">
+              Ditolak{" "}
+              {counts ? (
+                <Badge variant="destructive">{counts.rejected}</Badge>
+              ) : null}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
         <Input
@@ -288,7 +315,7 @@ export default function AdminCouponClaimsPage() {
         )}
       </div>
 
-      {/* Bar aksi massal — muncul saat ada yang dipilih */}
+      {/* Bar aksi massal, muncul saat ada yang dipilih */}
       {selected.size > 0 && (
         <div className="sticky top-2 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3 backdrop-blur">
           <p className="text-sm font-semibold">
@@ -337,7 +364,9 @@ export default function AdminCouponClaimsPage() {
           title={
             tab === "pending"
               ? "Tidak ada klaim menunggu review"
-              : "Belum ada klaim disetujui"
+              : tab === "rejected"
+                ? "Belum ada klaim yang ditolak"
+                : "Belum ada klaim disetujui"
           }
         />
       ) : (
@@ -375,6 +404,8 @@ export default function AdminCouponClaimsPage() {
                       </div>
                       {v.status === "pending" ? (
                         <Badge variant="warning">Menunggu</Badge>
+                      ) : v.status === "rejected" ? (
+                        <Badge variant="destructive">Ditolak</Badge>
                       ) : (
                         <Badge variant="success">Disetujui</Badge>
                       )}
@@ -403,9 +434,27 @@ export default function AdminCouponClaimsPage() {
                       ))}
                     </div>
 
-                    <p className="text-xs text-muted-foreground">
-                      {formatDateTime(v.created_at)}
-                    </p>
+                    {/* Data arsip lama tak punya waktu pengajuan asli
+                        (ikut terhapus), jadi jangan tampilkan epoch. */}
+                    {v.created_at && (
+                      <p className="text-xs text-muted-foreground">
+                        {formatDateTime(v.created_at)}
+                      </p>
+                    )}
+
+                    {v.status === "rejected" && (
+                      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-xs">
+                        <p className="font-semibold text-destructive">
+                          Ditolak
+                          {v.rejected_at
+                            ? ` ${formatDateTime(v.rejected_at)}`
+                            : ""}
+                        </p>
+                        <p className="mt-0.5 text-muted-foreground">
+                          {v.reason?.trim() || "Tanpa alasan tertulis."}
+                        </p>
+                      </div>
+                    )}
 
                     {v.status === "pending" && (
                       <div className="flex gap-2">

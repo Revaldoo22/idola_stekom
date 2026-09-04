@@ -1,7 +1,8 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
-import { GraduationCap, ShieldCheck, Ticket, Wallet } from "lucide-react";
+import { GraduationCap, ShieldCheck, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,18 +15,74 @@ import {
 import { Navbar } from "@/components/navbar";
 import { HeroVideo } from "@/components/hero-video";
 import { ParticipantGrid } from "@/components/participant-grid";
-import { PrizeButtons } from "@/components/prize-buttons";
+import { JoinPopup } from "@/components/join-popup";
+import { ClaimCouponDialog } from "@/components/claim-coupon-dialog";
 import { MaintenanceOverlay } from "@/components/maintenance-overlay";
 import { EventClosedOverlay } from "@/components/event-closed-overlay";
 import { VoterTodayPanel } from "@/components/voter-today";
 import { RoundCountdown } from "@/components/round-countdown";
+import { useMyProfile, useVoterToday } from "@/lib/queries";
 import { useTranslation } from "@/lib/i18n";
 
 function PrizeBanner() {
   const t = useTranslation("home");
+  const tPeserta = useTranslation("peserta");
+  const { data: me } = useMyProfile();
+  const { data: voterToday } = useVoterToday(true);
+  const [claimOpen, setClaimOpen] = React.useState(false);
+
+  const isParticipant = !!me?.is_participant;
+  const followed = !!me?.followed;
+  // Sudah pernah vote & belum klaim kupon: klik gambar langsung ke syarat
+  // klaim (skip penjelasan "Cara Dapat Kupon", sudah tidak relevan lagi).
+  const alreadyVoted = !!voterToday?.has_voted;
+  const skipToClaimStep = alreadyVoted && !isParticipant && !followed;
 
   function goToParticipants() {
     document.getElementById("peserta")?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  const bannerImage = (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/hp.png"
+        alt=""
+        className="h-40 w-full shrink-0 object-contain p-3 sm:h-auto sm:w-48 sm:p-2"
+      />
+      <div className="flex flex-1 flex-col justify-center gap-1.5 p-4 text-center sm:p-5 sm:pl-1 sm:text-left">
+        <span className="mx-auto inline-flex w-fit items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400 sm:mx-0">
+          <Ticket className="h-3.5 w-3.5" />
+          {t.prizeBannerTag}
+        </span>
+        <p className="text-lg font-extrabold leading-tight sm:text-xl">
+          {t.prizeBannerTitle}
+        </p>
+        <p className="text-sm text-muted-foreground">{t.prizeBannerDesc}</p>
+        <span className="mt-1 text-xs font-semibold text-primary">
+          {skipToClaimStep ? tPeserta.claimTeaserCta : t.prizeBannerCta} →
+        </span>
+      </div>
+    </>
+  );
+
+  if (skipToClaimStep) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setClaimOpen(true)}
+          className="mx-auto flex max-w-xl flex-col items-stretch overflow-hidden rounded-2xl border-2 border-dashed border-amber-400/60 bg-gradient-to-r from-amber-50 to-orange-50 text-left shadow-lg shadow-amber-500/10 transition-transform hover:scale-[1.01] dark:from-amber-950/40 dark:to-orange-950/40 sm:flex-row"
+        >
+          {bannerImage}
+        </button>
+        <ClaimCouponDialog
+          open={claimOpen}
+          onOpenChange={setClaimOpen}
+          onClaimed={() => setClaimOpen(false)}
+        />
+      </>
+    );
   }
 
   return (
@@ -35,27 +92,7 @@ function PrizeBanner() {
           type="button"
           className="mx-auto flex max-w-xl flex-col items-stretch overflow-hidden rounded-2xl border-2 border-dashed border-amber-400/60 bg-gradient-to-r from-amber-50 to-orange-50 text-left shadow-lg shadow-amber-500/10 transition-transform hover:scale-[1.01] dark:from-amber-950/40 dark:to-orange-950/40 sm:flex-row"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/hp.png"
-            alt=""
-            className="h-40 w-full shrink-0 object-contain p-3 sm:h-auto sm:w-48 sm:p-2"
-          />
-          <div className="flex flex-1 flex-col justify-center gap-1.5 p-4 text-center sm:p-5 sm:pl-1 sm:text-left">
-            <span className="mx-auto inline-flex w-fit items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400 sm:mx-0">
-              <Ticket className="h-3.5 w-3.5" />
-              {t.prizeBannerTag}
-            </span>
-            <p className="text-lg font-extrabold leading-tight sm:text-xl">
-              {t.prizeBannerTitle}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {t.prizeBannerDesc}
-            </p>
-            <span className="mt-1 text-xs font-semibold text-primary">
-              {t.prizeBannerCta} →
-            </span>
-          </div>
+          {bannerImage}
         </button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
@@ -94,6 +131,7 @@ export function HomeBody() {
     <div className="min-h-screen">
       <MaintenanceOverlay />
       <EventClosedOverlay />
+      <JoinPopup />
       <Navbar />
 
       {/* Video pembuka (audio on, volume mengecil saat di-scroll). */}
@@ -101,32 +139,39 @@ export function HomeBody() {
 
       {/* Hero */}
       <section id="hero" className="relative scroll-mt-16 overflow-hidden border-b">
-        <div className="container space-y-6 py-16 text-center md:py-24">
-          <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold text-primary">
-            <GraduationCap className="h-4 w-4" />
-            {t.badge}
+        <div className="container space-y-5 py-14 text-center md:py-20">
+          {/* Dua penanda sebaris: penyelenggara & gelombang berjalan. Dulu
+              bertumpuk sebagai dua baris pil sendiri-sendiri. */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold text-primary">
+              <GraduationCap className="h-4 w-4" />
+              {t.badge}
+            </span>
+            <RoundCountdown />
           </div>
-          <RoundCountdown />
+
           <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl">
             {t.heroTitle}
           </h1>
+
+          {/* Badge gratis dijadikan bagian kalimat pembuka, bukan pil
+              terpisah, supaya tidak menambah satu baris lagi. */}
           <p className="mx-auto max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            <b>{t.heroDescBold}</b> {t.heroDesc}
-          </p>
-          <p className="mx-auto inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-            <Wallet className="h-4 w-4" />
-            {t.freeBadge}
+            <b className="text-emerald-700 dark:text-emerald-400">
+              {t.heroDescBold}
+            </b>{" "}
+            {t.heroDesc}
           </p>
 
           <PrizeBanner />
 
-          <div className="flex flex-wrap justify-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-1 [&+a]:!mt-3">
             <Button
               size="lg"
               className="h-12 rounded-full px-7 text-base shadow-lg shadow-primary/25"
               asChild
             >
-              <Link href="/ranking">{t.rankingCta}</Link>
+              <Link href="/gelombang">{t.rankingCta}</Link>
             </Button>
             <Button
               size="lg"
@@ -144,7 +189,20 @@ export function HomeBody() {
               </a>
             </Button>
           </div>
-          <PrizeButtons />
+
+          {/* Tautan ke bio.stekom.ac.id: kumpulan tautan resmi (events, CS,
+              dll). Sengaja dibedakan dari tombol "Daftar Jadi Peserta" yang
+              langsung ke formulir, agar dua CTA ini tak rancu. Diberi baris
+              sendiri: disandingkan dengan tombol besar, tautan teks polos
+              tampak seperti elemen yang tercecer. */}
+          <a
+            href="https://bio.stekom.ac.id/daftarycs2026"
+            target="_blank"
+            rel="noopener"
+            className="mx-auto block w-fit text-sm font-medium text-muted-foreground underline underline-offset-4 transition-colors hover:text-primary"
+          >
+            {t.registerBacklink}
+          </a>
         </div>
       </section>
 
@@ -164,7 +222,7 @@ export function HomeBody() {
         <ParticipantGrid />
       </section>
 
-      {/* FAQ biaya — jawaban wajib terlihat di halaman agar rich result FAQ valid. */}
+      {/* FAQ biaya, jawaban wajib terlihat di halaman agar rich result FAQ valid. */}
       <section
         id="faq-biaya"
         aria-labelledby="faq-biaya-title"

@@ -37,7 +37,7 @@ function loadYouTubeApi(): Promise<void> {
  * Video pembuka YouTube dengan audio. Kebijakan browser melarang autoplay
  * bersuara, jadi mulai muted lalu unmute pada interaksi pertama user
  * (scroll/klik/sentuh). Volume mengecil seiring section di-scroll keluar
- * layar — makin ke bawah, makin pelan; senyap saat video tak terlihat.
+ * layar, makin ke bawah, makin pelan; senyap saat video tak terlihat.
  *
  * Memakai IFrame API resmi, bukan postMessage mentah, karena kita perlu tahu
  * kapan playback berhenti. Browser kadang menghentikan video iframe yang tak
@@ -71,13 +71,23 @@ export function HeroVideo() {
       return Math.round(ratio * 100);
     };
 
+    // Objek player sudah ada sebelum API-nya siap, jadi keberadaan method
+    // diperiksa dulu. Tanpa ini `p.unMute is not a function` memutus handler
+    // scroll dan volume berhenti mengikuti posisi halaman.
+    const isReady = (p: YTPlayer | null): boolean =>
+      !!p &&
+      typeof p.unMute === "function" &&
+      typeof p.mute === "function" &&
+      typeof p.isMuted === "function" &&
+      typeof p.setVolume === "function";
+
     const applyVolume = () => {
       const p = playerRef.current;
-      if (!p || !unmutedRef.current) return;
+      if (!isReady(p) || !p || !unmutedRef.current) return;
       const vol = computeVolume();
       if (vol === lastVolumeRef.current) return;
       lastVolumeRef.current = vol;
-      // Selalu setVolume — inilah "volume turun perlahan" yang diinginkan.
+      // Selalu setVolume, inilah "volume turun perlahan" yang diinginkan.
       p.setVolume(vol);
       // Di volume 0 pakai mute() supaya browser tidak menganggap tab ini
       // sumber audio aktif, tapi playback tetap dibiarkan jalan.
@@ -88,7 +98,8 @@ export function HeroVideo() {
     // Interaksi pertama → unmute. (Autoplay bersuara diblokir browser.)
     const unmute = () => {
       const p = playerRef.current;
-      if (!p || unmutedRef.current) return;
+      // Belum siap: jangan tandai sudah unmute, biar dicoba lagi nanti.
+      if (!isReady(p) || !p || unmutedRef.current) return;
       unmutedRef.current = true;
       const vol = computeVolume();
       lastVolumeRef.current = vol;
@@ -122,6 +133,11 @@ export function HeroVideo() {
           rel: 0,
           playsinline: 1,
           modestbranding: 1,
+          // Wajib cocok dengan origin halaman, tanpa ini, postMessage
+          // antara iframe & parent (dasar IFrame API: playVideo(),
+          // onStateChange, dst.) bisa ditolak diam-diam di domain produksi
+          // HTTPS meski tetap "berhasil" di localhost HTTP.
+          origin: window.location.origin,
         },
         events: {
           onReady: (e) => {
@@ -131,7 +147,7 @@ export function HeroVideo() {
           onStateChange: (e) => {
             // -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued.
             // Browser bisa mem-pause video iframe yang tak terlihat atau
-            // senyap. Kalau bukan user yang pause, lanjutkan lagi — ini yang
+            // senyap. Kalau bukan user yang pause, lanjutkan lagi, ini yang
             // membuat video tidak pernah terlihat berhenti saat di-scroll.
             if (e.data === 2 && !userPausedRef.current) {
               e.target.playVideo();

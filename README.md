@@ -1,7 +1,7 @@
-# YCS — Youth Character Summit Voting (Nest + Next)
+# YCS, Youth Character Summit Voting (Nest + Next)
 
 Platform voting Youth Character Summit (YCS): **NestJS API** (own DB + auth) + **Next.js admin dashboard** (TanStack Query).
-DB belum final — TypeORM + Postgres dipakai sebagai default, gampang tuker nanti.
+DB belum final, TypeORM + Postgres dipakai sebagai default, gampang tuker nanti.
 
 **Repo (push terpisah):**
 
@@ -32,7 +32,7 @@ backend/                      NestJS + TypeORM (Postgres) + JWT
 
 frontend/                     Next.js App Router + TanStack Query
 └─ src/
-   ├─ app/                    route TIPIS — cuma wiring layout/page
+   ├─ app/                    route TIPIS, cuma wiring layout/page
    │  ├─ login/  dashboard/   page.tsx import dari features/
    │  └─ providers.tsx        QueryClientProvider
    ├─ features/               SATU FOLDER PER FITUR
@@ -43,17 +43,17 @@ frontend/                     Next.js App Router + TanStack Query
       └─ query-keys.ts        SEMUA query key terdaftar di sini
 ```
 
-## Konvensi (wajib — biar kolab minim miss)
+## Konvensi (wajib, biar kolab minim miss)
 
 **Tambah fitur backend** (contoh: quests):
 1. Entity baru → `database/entities/quest.entity.ts`, daftarkan di `entities/index.ts` (`ENTITIES`).
 2. Folder `modules/quests/` → `quests.module.ts` + `quests.controller.ts` + `quests.service.ts` + `dto/`.
 3. Proteksi: `@UseGuards(JwtGuard, RolesGuard)` + `@Roles("admin")` di controller.
-4. Import module di `app.module.ts`. Selesai — tidak sentuh file fitur lain.
+4. Import module di `app.module.ts`. Selesai, tidak sentuh file fitur lain.
 
 **Tambah fitur frontend**:
 1. Folder `features/<fitur>/` → `api.ts` (fetch + types), `hooks.ts` (useQuery/useMutation), `components/`.
-2. Query key daftar di `lib/query-keys.ts` — jangan hardcode string di komponen.
+2. Query key daftar di `lib/query-keys.ts`, jangan hardcode string di komponen.
 3. Route di `app/` cuma import komponen feature. Logic jangan di page.
 
 **Aturan umum**: page/controller tipis, logic di service/hooks; types didefinisikan di `api.ts` feature (kontrak = response backend); jangan cross-import antar feature (lewat `lib/` kalau perlu shared).
@@ -81,8 +81,8 @@ npm run dev                # http://localhost:3000  → /login → /dashboard
 
 | Method | Path              | Guard        | Fungsi                 |
 |--------|-------------------|--------------|------------------------|
-| GET    | `/api/health`     | —            | health check           |
-| POST   | `/api/auth/login` | —            | login, keluarkan JWT   |
+| GET    | `/api/health`     | -            | health check           |
+| POST   | `/api/auth/login` | -            | login, keluarkan JWT   |
 | GET    | `/api/auth/me`    | JWT          | identitas token        |
 | GET    | `/api/admin/stats`| JWT + admin  | statistik dashboard    |
 | GET    | `/api/admin/vote-series?days=14` | JWT + admin | vote per hari (grafik) |
@@ -94,5 +94,5 @@ npm run dev                # http://localhost:3000  → /login → /dashboard
 
 - `admin_stats()` RPC Supabase lama → `AdminService.stats()` (TypeORM). Voter = `distinct voter_phone` di `daily_votes` (model voter anonim).
 - Password: scrypt (`salt:hash`), no dep eksternal. Tukar ke argon2/bcrypt saat produksi.
-- `DB_SYNC=true` hanya dev — produksi pakai migration TypeORM.
-- Endpoint admin lain (vote series, participants, quests, submissions, voters) belum dibuat — ikuti konvensi di atas.
+- `DB_SYNC=true` hanya dev, produksi pakai migration TypeORM.
+- Endpoint admin lain (vote series, participants, quests, submissions, voters) belum dibuat, ikuti konvensi di atas.

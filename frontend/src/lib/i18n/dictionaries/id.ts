@@ -11,6 +11,8 @@ const id = {
     home: "Home",
     ranking: "Ranking",
     gelombang: "Klasemen",
+    lolos: "Peserta Lolos",
+    goldenBuzzer: "Golden Buzzer",
     logout: "Keluar",
     logoutSuccess: "Berhasil keluar.",
     panduan: "Panduan",
@@ -18,7 +20,7 @@ const id = {
   },
   authNav: {
     logoutSuccess: "Berhasil keluar.",
-    login: "Masuk",
+    login: "Vote Sekarang",
     supporterFallback: "Pendukung",
     participantBadge: "Peserta",
     adminDashboard: "Dashboard Admin",
@@ -87,9 +89,13 @@ const id = {
     emptyRegionScope: "Belum ada peserta dari kabupatenmu",
     points: "poin",
     votedBadge: "Sudah Kamu Vote",
+    qualifiedBadge: "Lolos",
+    goldenBadge: "Golden Buzzer",
+    goldenLabel: "Golden Buzzer",
+    qualifiedLabel: "Sudah Lolos",
     pendingBadge: "Vote Menunggu Review",
     votedLabel: "Sudah kamu vote",
-    pendingLabel: "Menunggu review admin",
+    pendingLabel: "Direview, cek notifikasi",
     supportCta: "Dukung",
     prev: "Sebelumnya",
     next: "Berikutnya",
@@ -219,10 +225,11 @@ const id = {
   },
   home: {
     badge: "Universitas STEKOM",
-    heroTitle: "Youth Character Summit 2026",
+    heroTitle: "Dukung Pelajar Favoritmu di Voting 2026",
+    registerBacklink: "Info & Tautan Resmi",
     heroDescBold: "Pendaftaran 100% gratis, tanpa biaya apa pun.",
     heroDesc:
-      "Dukung pelajar favoritmu! Pilih peserta di bawah, beri dukungan, dan bantu mereka memenangkan hadiah.",
+      "Pilih peserta di bawah, beri dukungan, dan bantu mereka memenangkan hadiah.",
     freeBadge: "Gratis - Rp0 biaya pendaftaran",
     prizeBannerTag: "Hadiah Undian",
     prizeBannerTitle: "Menangkan Handphone dari Kupon Undian!",
@@ -235,7 +242,7 @@ const id = {
     prizeDialogStep3: "Selesai! Kupon undian masuk ke akunmu setelah bukti disetujui admin, cek di menu Kupon Saya.",
     prizeDialogCta: "Vote Sekarang",
     rankingCta: "Peringkat Sementara",
-    joinCta: "Jadi Peserta YCS",
+    joinCta: "Daftar Jadi Peserta",
     participantsTitle: "Daftar Peserta",
     participantsSubtitle: "Klik peserta untuk memberi dukungan & mengerjakan quest.",
     faqTitle: "Apakah YCS 2026 Berbayar?",
@@ -288,9 +295,55 @@ const id = {
     prizeAlt: "Hadiah handphone",
     footerNote:
       "Unduh dan simpan kuponmu. Pengundian dilakukan panitia di akhir event.",
+    winnerBadge: "Menang!",
+    winnerNote: (prize: string) => `Selamat! Kupon ini menang: ${prize}.`,
+    winnerNoteGeneric: "Selamat! Kupon ini terpilih sebagai pemenang undian.",
+  },
+  lolos: {
+    title: "Peserta Lolos",
+    pointsLabel: "poin",
+    slotNote: (
+      lolos: number,
+      quota: number,
+      leftover: number,
+      nextName: string,
+      nextTotal: number,
+    ) =>
+      `${lolos} peserta lolos dari ${quota} slot. Sisa ${leftover} slot tidak hangus, tapi ditambahkan ke ${nextName}, jadi kuotanya menjadi ${nextTotal} slot.`,
+    subtitle:
+      "Peserta yang lolos di tiap gelombang. Pilih gelombang untuk melihat daftarnya.",
+    emptyTitle: "Belum ada peserta lolos",
+    emptyDescription: "Hasil muncul setelah gelombang ditutup panitia.",
+    searchPlaceholder: "Cari nama peserta atau sekolah",
+    emptySearch: "Tidak ada yang cocok dengan pencarian",
+    count: (n: number) => `${n} peserta lolos`,
+  },
+  goldenBuzzer: {
+    title: "Golden Buzzer",
+    subtitle:
+      "Peserta pilihan panitia atau juri yang punya keunggulan unik, inspiratif, dan spesial.",
+    badge: "Golden",
+    count: (n: number) => `${n} peserta Golden Buzzer`,
+    note:
+      "Golden Buzzer diberikan kepada peserta yang terpilih langsung oleh panitia atau juri karena punya keunggulan yang unik, inspiratif, spesial, dan bisa jadi role model yang baik bagi banyak orang.",
+    congrats: "Selamat kepada para Golden Buzzer!",
+    emptyTitle: "Belum ada Golden Buzzer",
+    emptyDescription: "Nantikan pengumuman dari panitia.",
+  },
+  joinPopup: {
+    title: "Ayo jadi peserta YCS 2026",
+    imageAlt: "Banner pendaftaran Youth Character Summit 2026",
+    close: "Tutup",
   },
   gelombang: {
     schools: "sekolah",
+    tabTopParticipants: "Peringkat Peserta",
+    tabByRegion: "Jelajah Wilayah",
+    topHint: (n: number) =>
+      `Peringkat peserta se-Indonesia. ${n} peserta teratas lolos ke babak berikutnya.`,
+    topHintNoQuota: "Peringkat peserta se-Indonesia.",
+    cutoffLine: (n: number) => `Batas ${n} besar`,
+    participants: "peserta",
     totalPoints: "Total Poin",
     student: "Siswa",
     school: "Sekolah",
@@ -312,8 +365,9 @@ const id = {
     passed: "Lolos",
     eliminated: "Gugur",
     regencyChildLabel: "kabupaten",
-    emptySchoolsInBoard: "Belum ada sekolah di klasemen ini",
-    levelHintStudent: "Leaderboard siswa sekolah ini. Klik siswa untuk mendukung.",
+    emptySchoolsInBoard: "Belum ada peserta di klasemen ini",
+    levelHintStudent:
+      "Peringkat siswa sekolah ini. Yang lolos ke babak berikutnya adalah siswa, bukan sekolah. Klik siswa untuk mendukung.",
     levelHintSchool:
       "Leaderboard sekolah di kabupaten/kota ini. Klik sekolah untuk lihat siswanya.",
     levelHintRegency:
@@ -321,7 +375,7 @@ const id = {
     levelHintProvince:
       "Leaderboard provinsi se-nasional. Klik provinsi untuk menjelajah ke bawah.",
     regionPointsNote:
-      "Poin wilayah = jumlah poin seluruh sekolah peserta di wilayah itu (termasuk poin bawaan dari babak sebelumnya).",
+      "Poin wilayah = jumlah poin seluruh siswa peserta di wilayah itu (termasuk poin bawaan dari babak sebelumnya). Yang lolos dihitung per siswa, bukan per sekolah.",
   },
   onboarding: {
     stepAccount: "Akun",
@@ -416,11 +470,13 @@ const id = {
     notFound: "Peserta tidak ditemukan",
     zoomPhoto: (name: string) => `Perbesar foto ${name}`,
     points: "poin",
+    pointsInRound: (round: string) => `poin di ${round}`,
+    pointsTotal: (n: string) => `total event ${n} poin`,
     shareProfile: "Bagikan Profil",
     shareMessage: (name: string) =>
       `Dukung ${name} di Youth Character Summit Universitas STEKOM! 🔥`,
     votedPendingReview:
-      "Sudah vote — bukti follow menunggu review admin. Poin masuk setelah di-approve.",
+      "Sudah vote, bukti follow menunggu review admin. Poin masuk setelah di-approve.",
     votedThanks: "Kamu sudah vote peserta ini. Terima kasih!",
     oneVotePerAccount: "Setiap akun hanya bisa memberi 1 vote seumur event.",
     questSectionTitle: (name: string) =>
@@ -440,10 +496,29 @@ const id = {
       "Klaim kupon terkirim! Bukti follow-mu sedang direview admin.",
     voteSuccess: (points: number, name: string) => `+${points} terkirim untuk ${name}`,
     eventClosed: "Event ditutup",
+    goldenCelebrateTitle: "Golden Buzzer!",
+    goldenCelebrateDesc:
+      "Peserta ini dipilih langsung oleh panitia dan lolos ke babak berikutnya.",
+    goldenBadgeBig: "Lolos Golden Buzzer",
+    qualifiedCelebrateTitle: "Selamat, Lolos!",
+    qualifiedCelebrateDesc: (round: string) =>
+      round
+        ? `Peserta ini lolos di ${round} dan melaju ke babak berikutnya.`
+        : "Peserta ini lolos dan melaju ke babak berikutnya.",
+    qualifiedBadgeBig: "Lolos Gelombang",
+    qualifiedNoVote: "Sudah Lolos",
+    goldenNoVote: "Golden Buzzer",
     support: "Dukung",
     followTaskDialogTitle: "Klaim Kupon Undian Handphone",
     followTaskDialogDescription: (n: number) =>
-      `Vote kamu sudah masuk! Follow ${n} akun di bawah, upload bukti, lalu kirim untuk klaim kupon undian handphone. Bukti direview admin — kuponmu sah setelah di-approve.`,
+      `Vote kamu sudah masuk! Follow ${n} akun di bawah, upload bukti, lalu kirim untuk klaim kupon undian handphone. Bukti direview admin, kuponmu sah setelah di-approve.`,
+    claimTeaserTitle: "Vote Berhasil! 🎉",
+    claimTeaserBody:
+      "Sayang banget kalau dilewatkan, klaim kupon undian sekarang dan dapatkan kesempatan menangkan handphone & hadiah menarik lainnya!",
+    claimTeaserCta: "Klaim Sekarang",
+    claimTeaserLater: "Nanti Saja",
+    claimCtaCard: "Klaim Kupon Undian Handphone",
+    claimCtaCardDesc: "Menangkan handphone & hadiah menarik lainnya!",
     screenshotProofLabel: "Screenshot Bukti (boleh pilih banyak sekaligus)",
     files: "file",
     proofNote:
@@ -484,7 +559,12 @@ const id = {
       `Wajib follow ${n} saluran WhatsApp di bawah sebelum vote pertamamu diproses. Upload bukti, lalu kirim. Vote masuk setelah bukti di-approve admin.`,
     sendProofAndVoteWa: (n: number) => `Kirim Bukti & Vote (${n} file)`,
     votePendingSuccess:
-      "Vote terkirim! Bukti follow WA-mu sedang direview admin — poin masuk setelah di-approve.",
+      "Vote terkirim! Bukti follow WhatsApp-mu sedang direview admin. Cek notifikasi lonceng dalam 24 jam untuk tahu hasilnya.",
+    pendingNoticeTitle: "Vote kamu sedang direview",
+    pendingNoticeBody:
+      "Admin sedang memeriksa bukti follow WhatsApp-mu. Poin masuk setelah disetujui, biasanya dalam 24 jam. Kembali lagi besok dan cek lonceng notifikasi di pojok atas untuk tahu vote kamu disetujui atau ditolak.",
+    pendingNoticeRejected:
+      "Kalau ditolak, kamu tetap bisa vote lagi dengan bukti yang benar.",
     chooseContentFirst: "Pilih konten peserta dulu.",
     invalidLink: "Masukkan link postingan yang valid (mulai http).",
     chooseAtLeastOneFile: "Pilih minimal 1 file bukti.",
@@ -518,10 +598,24 @@ const id = {
     adminWaMessage:
       "Halo Admin YCS, saya butuh bantuan terkait web voting Youth Character Summit.",
     pageTitle: "Panduan Penggunaan",
+    pageSubtitle: "Panduan Resmi Youth Character Summit Universitas STEKOM.",
     intro:
       "Ikuti panduan yang sesuai dengan kamu: pendukung umum (teman, guru, keluarga, atau siapa pun) atau peserta YCS yang ingin ikut mendukung temannya.",
     introSupporterBold: "pendukung umum",
     introParticipantBold: "peserta YCS",
+    tocTitle: "Daftar Isi",
+    tocFree: "Pendaftaran Gratis",
+    tocSupporter: "Untuk Pendukung Umum",
+    tocParticipant: "Untuk Peserta YCS",
+    tocTimeline: "Timeline YCS 2026",
+    tocSlot: "Akumulasi Slot",
+    tocFaq: "Pertanyaan Seputar Biaya",
+    tocHelp: "Bantuan",
+    searchPlaceholder: "Cari informasi di panduan ini...",
+    searchClear: "Hapus pencarian",
+    searchNoResultsTitle: "Tidak ada yang cocok",
+    searchNoResults: (query: string) =>
+      `Tidak ada poin panduan yang cocok dengan "${query}". Coba kata kunci lain atau hapus pencarian.`,
     freeTitle: "Semua Pendaftaran GRATIS, Tanpa Biaya Apa Pun",
     freeDescBold:
       "Pendaftaran Youth Character Summit 2026 Universitas STEKOM sepenuhnya gratis alias Rp0.",
@@ -622,7 +716,7 @@ const id = {
     ],
     goldenBuzzerBold: "Golden Buzzer",
     goldenBuzzerDesc:
-      "adalah peserta yang terpilih langsung oleh panitia atau juri karena punya keunggulan yang unik, inspiratif, spesial, dan bisa jadi role model yang baik bagi banyak orang.",
+      "adalah peserta yang terpilih langsung oleh panitia atau juri karena punya keunggulan yang unik, inspiratif, spesial, dan bisa jadi role model yang baik bagi banyak orang. Peserta Golden Buzzer langsung lolos, jadi tidak lagi menerima dukungan dan poinnya sudah final.",
     semiFinalSelectionBold: "Seleksi lanjutan semi finalis:",
     semiFinalSelectionDesc:
       "membuat Twibbon dan video kampanye contoh #AksiBaik di sekolah, lalu tes kuesioner yang dipandu lewat online meeting Zoom.",
@@ -632,6 +726,33 @@ const id = {
     groupRuleBold: "Soal Grup A, B, dan C:",
     groupRuleDesc:
       "itu hanya nama fase pengumuman. Peserta yang lolos tiap fase dipilih dari pendaftar bulan berjalan dan pendaftar sebelumnya yang belum lolos, jadi semua pendaftar punya kesempatan yang sama. Belum terpilih bulan ini? Datamu otomatis ikut pemilihan bulan berikutnya.",
+    slotTitle: "Ketentuan Hasil Seleksi & Akumulasi Slot",
+    slotSubtitle:
+      "Slot yang belum terisi di satu gelombang tidak hangus, tapi ditambahkan ke gelombang berikutnya.",
+    slotIntro:
+      "Supaya kesempatan peserta lebih luas, seleksi memakai skema akumulasi slot apabila kuota pada suatu periode belum terpenuhi.",
+    slotRuleTitle: "Ketentuan skema seleksi",
+    slotRuleDesc:
+      "Setiap periode seleksi punya kuota tertentu untuk peserta yang bisa dinyatakan lolos. Setelah proses seleksi dan validasi selesai, jumlah peserta yang memenuhi ketentuan dibandingkan dengan kuota yang tersedia.",
+    slotNotBurnedBold: "Slot yang belum terisi tidak hangus.",
+    slotNotBurnedDesc:
+      "Kalau ada slot kosong karena peserta dinyatakan tidak valid, tidak dapat dihubungi, tidak mengikuti tahapan seleksi, tidak mengerjakan tes sesuai jadwal, atau alasan lain sesuai ketentuan, slot itu diakumulasikan ke kuota periode berikutnya.",
+    slotExampleTitle: "Contoh perhitungan",
+    slotExampleRows: [
+      { label: "Kuota seleksi bulan Agustus", value: "200 peserta" },
+      { label: "Peserta yang memenuhi ketentuan", value: "140 peserta" },
+      { label: "Sisa slot (200 - 140)", value: "60 slot" },
+      { label: "Kuota normal bulan September", value: "200 peserta" },
+      { label: "Slot akumulasi dari Agustus", value: "+60 slot" },
+    ],
+    slotExampleResult:
+      "Kuota seleksi bulan September menjadi 260 peserta.",
+    slotNoteTitle: "Catatan penting",
+    slotNotes: [
+      "Akumulasi slot tidak berarti peserta yang belum lolos pada periode sebelumnya otomatis lolos pada periode berikutnya.",
+      "Setiap peserta tetap harus mengikuti proses seleksi dan memenuhi seluruh persyaratan serta ketentuan yang berlaku pada periode tersebut.",
+      "Peserta yang belum berhasil pada satu periode tetap punya kesempatan mengikuti seleksi pada periode berikutnya sesuai ketentuan yang berlaku.",
+    ],
     faqTitle: "Pertanyaan Seputar Biaya Pendaftaran",
     faqSubtitle: "Jawaban singkat soal biaya Youth Character Summit 2026.",
     faq: [
@@ -649,7 +770,7 @@ const id = {
       },
       {
         q: "Bagaimana jika ada orang yang meminta uang untuk pendaftaran?",
-        a: "Abaikan dan segera laporkan ke admin resmi Youth Character Summit lewat WhatsApp +62 888-8555-591. Panitia tidak pernah meminta pembayaran dalam bentuk apa pun.",
+        a: "Abaikan dan segera laporkan ke admin resmi Youth Character Summit lewat WhatsApp +62 878-4877-5292. Panitia tidak pernah meminta pembayaran dalam bentuk apa pun.",
       },
       {
         q: "Apakah beasiswa yang didapat peserta juga gratis tanpa potongan?",

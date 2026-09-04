@@ -6,7 +6,7 @@ import NextTopLoader from "nextjs-toploader";
 import { Providers } from "@/components/providers";
 import { HelpFab } from "@/components/help-fab";
 
-// Google Analytics 4 — bisa di-override / dimatikan lewat env.
+// Google Analytics 4, bisa di-override / dimatikan lewat env.
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID ?? "G-FZZC7WVGJX";
 // Microsoft Clarity (heatmap + session recording).
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID ?? "xj40fbpzhu";
@@ -18,7 +18,7 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"] });
 // "localhost" akan ditolak Google Search Console.
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://idola.stekom.ac.id";
-const title = "Youth Character Summit - Universitas STEKOM";
+const title = "Voting Peserta - Universitas STEKOM";
 const description =
   "Platform kompetisi karakter pelajar SMA/SMK. Dukung peserta favoritmu dan menangkan smartphone, sertifikat, & jadi Duta Teladan Universitas STEKOM!";
 
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title,
     description,
-    siteName: "Youth Character Summit Universitas STEKOM",
+    siteName: "Voting Peserta Universitas STEKOM",
     type: "website",
     locale: "id_ID",
     url: siteUrl,
@@ -102,8 +102,11 @@ export default function RootLayout({
             </Script>
           </>
         )}
+        {/* id script JANGAN "clarity": browser membuat window.<id> untuk tiap
+            elemen ber-id, sehingga elemen script-nya menimpa window.clarity
+            yang dipakai library, dan tag-nya gagal berjalan. */}
         {CLARITY_ID && (
-          <Script id="clarity" strategy="afterInteractive">
+          <Script id="ms-clarity" strategy="afterInteractive">
             {`
               (function(c,l,a,r,i,t,y){
                 c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};

@@ -22,6 +22,14 @@ const MESSAGES: Record<string, [string, number]> = {
   EVENTCLOSED: ["Event sedang ditutup.", 409],
   ROUND_ENDED: ["Periode gelombang ini sudah berakhir. Tunggu gelombang berikutnya.", 409],
   NOTFOUND: ["Peserta tidak ditemukan.", 400],
+  GOLDEN_BUZZER: [
+    "Peserta ini sudah jadi Golden Buzzer dan langsung lolos, jadi tidak menerima dukungan lagi.",
+    409,
+  ],
+  ALREADY_QUALIFIED: [
+    "Peserta ini sudah lolos ke babak berikutnya, jadi tidak menerima dukungan lagi.",
+    409,
+  ],
   SELFVOTE: ["Kamu tidak bisa mendukung dirimu sendiri.", 409],
   PHONE_NAME: [
     "Nomor WhatsApp ini sudah terdaftar dengan nama lain. Gunakan nama yang sama.",
@@ -53,7 +61,7 @@ const MESSAGES: Record<string, [string, number]> = {
   DAILY_DONE: ["Quest harian ini sudah kamu kerjakan hari ini.", 409],
   ALREADY_DONE: ["Kamu sudah mengerjakan quest ini untuk peserta tersebut.", 409],
   GLOBAL_DONE: [
-    "Kamu sudah mengerjakan quest follow ini. Cukup follow sekali — tak perlu diulang di peserta lain.",
+    "Kamu sudah mengerjakan quest follow ini. Cukup follow sekali, tak perlu diulang di peserta lain.",
     409,
   ],
 };
@@ -76,7 +84,7 @@ export class VotingController {
     private readonly submissions: SubmissionsService,
   ) {}
 
-  /** POST /api/vote — WAJIB login voter (SSO + wizard). Identitas dari sesi. */
+  /** POST /api/vote, WAJIB login voter (SSO + wizard). Identitas dari sesi. */
   @Post("vote")
   @UseGuards(JwtGuard, RolesGuard)
   @Roles("voter", "participant")
@@ -95,7 +103,7 @@ export class VotingController {
     }
   }
 
-  /** POST /api/submissions — WAJIB login voter. Identitas dari sesi. */
+  /** POST /api/submissions, WAJIB login voter. Identitas dari sesi. */
   @Post("submissions")
   @UseGuards(JwtGuard, RolesGuard)
   @Roles("voter", "participant")

@@ -3,7 +3,7 @@ import { DataSource } from "typeorm";
 
 /**
  * Public read endpoints. Aggregate SQL is ported 1:1 from the old Supabase
- * RPCs (migration 0022) and returns snake_case rows — the frontend types
+ * RPCs (migration 0022) and returns snake_case rows, the frontend types
  * (src/types/database.ts) are unchanged.
  */
 @Injectable()
@@ -63,7 +63,24 @@ export class PublicService {
                    else json_build_object('id', s.id, 'name', s.name,
                                           'region_id', s.region_id,
                                           'kabupaten', reg.name,
-                                          'provinsi', prov.name) end as schools
+                                          'provinsi', prov.name) end as schools,
+              -- Sudah lolos = berhenti berkompetisi, vote ke dia ditolak.
+              exists (
+                select 1 from round_participants rl
+                where rl.participant_id = p.id and rl.status = 'lolos'
+              ) as qualified,
+              p.golden_buzzer,
+              -- Poin gelombang berjalan, basis yang sama dengan klasemen.
+              -- Kartu memakai ini supaya angkanya tak beda dengan klasemen.
+              (select (rp.carry_points + coalesce((
+                         select sum(dv.points) from daily_votes dv
+                         where dv.participant_id = rp.participant_id
+                           and dv.round_id = rp.round_id
+                       ), 0))::int
+                 from round_participants rp
+                 join rounds r on r.id = rp.round_id
+                where rp.participant_id = p.id and r.status = 'active'
+                limit 1) as round_points
        from participants p
        left join schools s on s.id = p.school_id
        left join regions reg on reg.id = s.region_id
@@ -71,6 +88,26 @@ export class PublicService {
        where ($1::uuid is null or p.school_id = $1)
        order by p.total_points desc`,
       [schoolId ?? null],
+    );
+  }
+
+  /**
+   * Daftar Golden Buzzer, terbaru dulu. Peserta ini langsung lolos, jadi
+   * tidak lagi menerima vote.
+   */
+  goldenBuzzers() {
+    return this.db.query(
+      `select p.id, p.name, p.photo_url, p.description,
+              p.total_points::int as total_points, p.golden_buzzer_at,
+              p.school_id, coalesce(s.name, 'Tanpa Sekolah') as school_name,
+              coalesce(rg.name, 'Tanpa Kabupaten') as region_name,
+              coalesce(prov.name, 'Tanpa Provinsi') as province_name
+       from participants p
+       left join schools s on s.id = p.school_id
+       left join regions rg on rg.id = s.region_id
+       left join regions prov on prov.id = rg.parent_id
+       where p.golden_buzzer = true and p.status = 'active'
+       order by p.golden_buzzer_at desc nulls last, p.name`,
     );
   }
 
@@ -92,7 +129,35 @@ export class PublicService {
     const rows = await this.db.query(
       `select p.*,
               case when s.id is null then null
-                   else json_build_object('id', s.id, 'name', s.name) end as schools
+                   else json_build_object('id', s.id, 'name', s.name) end as schools,
+              -- Sudah lolos = berhenti berkompetisi, vote ke dia ditolak.
+              exists (
+                select 1 from round_participants rl
+                where rl.participant_id = p.id and rl.status = 'lolos'
+              ) as qualified,
+              p.golden_buzzer,
+              -- Nama gelombang tempat dia lolos, untuk ditampilkan di panel.
+              (select r.name from round_participants rl
+                 join rounds r on r.id = rl.round_id
+                where rl.participant_id = p.id and rl.status = 'lolos'
+                order by r.sequence limit 1) as qualified_round_name,
+              -- Poin di gelombang BERJALAN, basis yang sama dengan klasemen:
+              -- carry_points + vote yang masuk di gelombang itu. Tanpa ini
+              -- halaman peserta menampilkan total_points sehingga angkanya
+              -- beda dengan klasemen dan terlihat seperti bug.
+              (select (rp.carry_points + coalesce((
+                         select sum(dv.points) from daily_votes dv
+                         where dv.participant_id = rp.participant_id
+                           and dv.round_id = rp.round_id
+                       ), 0))::int
+                 from round_participants rp
+                 join rounds r on r.id = rp.round_id
+                where rp.participant_id = p.id and r.status = 'active'
+                limit 1) as round_points,
+              (select r.name from round_participants rp
+                 join rounds r on r.id = rp.round_id
+                where rp.participant_id = p.id and r.status = 'active'
+                limit 1) as round_name
        from participants p
        left join schools s on s.id = p.school_id
        where p.id = $1`,

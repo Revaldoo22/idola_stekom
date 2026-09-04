@@ -33,6 +33,8 @@ export interface Profile {
 export interface Participant {
   id: string;
   profile_id: string | null;
+  /** Email dari web pendaftaran. Kunci sinkronisasi & pencocokan voter. */
+  email: string | null;
   name: string;
   school_id: string;
   photo_url: string | null;
@@ -100,9 +102,54 @@ export interface DailyVote {
 // RPC return shapes
 export interface AdminStats {
   total_schools: number;
+
+  // Peserta
   total_participants: number;
+  active_participants: number;
+  inactive_participants: number;
+  golden_buzzers: number;
+  /** Lolos lewat gelombang, tidak termasuk Golden Buzzer. */
+  qualified_participants: number;
+  participants_with_points: number;
+
+  // Voter (identitas unik, bukan jumlah vote)
   total_voters: number;
+  onboarded_voters: number;
+
+  // Vote. Bot (boost admin) tidak pernah ikut selain di bot_votes.
   total_votes: number;
+  approved_votes: number;
+  pending_votes: number;
+  /** Dari arsip: baris vote dihapus saat ditolak agar voter bisa mengulang. */
+  rejected_votes: number;
+  /** Voter unik yang ditolak lalu mengajukan ulang dan akhirnya disetujui. */
+  recovered_voters: number;
+  /** Voter unik yang ditolak dan tak pernah kembali. */
+  lost_voters: number;
+  bot_votes: number;
+
+  /**
+   * Corong VOTER MURNI: akun yang bukan peserta. Tiap tahap himpunan bagian
+   * dari tahap sebelumnya (punya akun > onboarding > pernah vote), jadi
+   * jangan dijumlahkan.
+   */
+  accounts_total: number;
+  accounts_onboarded: number;
+  accounts_not_onboarded: number;
+  accounts_voted: number;
+  accounts_onboarded_no_vote: number;
+  /** Akun peserta, dihitung terpisah dari corong voter. */
+  participant_accounts: number;
+  /** Peserta yang ikut mendukung peserta lain. */
+  participant_accounts_voted: number;
+  /** Vote dari nomor yang tak punya akun terdaftar (mis. data lama). */
+  voters_without_account: number;
+
+  // Klaim kupon
+  pending_claims: number;
+  approved_claims: number;
+  rejected_claims: number;
+
   total_points: number;
 }
 
@@ -134,6 +181,11 @@ export interface DailyVoteSeriesRow {
 
 export interface VoterGrowthRow {
   day: string;
+  /** Akun voter yang dibuat hari itu. */
+  accounts: number;
+  /** Orang yang benar-benar vote hari itu (nomor WA unik, tanpa bot). */
+  voters: number;
+  /** Akumulasi voter unik sampai hari itu. */
   cumulative: number;
 }
 
@@ -148,4 +200,23 @@ export type ParticipantWithSchool = Participant & {
     | null;
   // Only readable by admin (RLS); the participant's login phone number.
   profiles?: { phone_number: string } | null;
+  /**
+   * Sudah lolos di salah satu gelombang. Peserta ini berhenti berkompetisi,
+   * jadi tidak menerima vote lagi (backend menolak dengan ALREADY_QUALIFIED).
+   */
+  qualified?: boolean;
+  /**
+   * Dipilih panitia sebagai Golden Buzzer: langsung lolos, jadi tidak
+   * menerima vote lagi (backend menolak dengan GOLDEN_BUZZER).
+   */
+  golden_buzzer?: boolean;
+  /** Nama gelombang tempat dia lolos. Null untuk Golden Buzzer. */
+  qualified_round_name?: string | null;
+  /**
+   * Poin di gelombang berjalan (carry + vote gelombang itu), basis yang sama
+   * dengan klasemen. Null bila peserta tak ikut gelombang aktif.
+   */
+  round_points?: number | null;
+  /** Nama gelombang berjalan yang diikuti peserta ini. */
+  round_name?: string | null;
 };

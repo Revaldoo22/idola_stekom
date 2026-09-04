@@ -21,7 +21,7 @@ import {
   MaxLength,
 } from "class-validator";
 import { DataSource, EntityManager } from "typeorm";
-import { CouponClaim } from "../../database/entities";
+import { CouponClaim, Rejection } from "../../database/entities";
 import { JwtGuard } from "../../common/guards/jwt.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
@@ -32,7 +32,7 @@ class ReviewClaimDto {
   @IsIn(["approved", "rejected"])
   status!: "approved" | "rejected";
 
-  /** Alasan penolakan — masuk ke notifikasi voter. */
+  /** Alasan penolakan, masuk ke notifikasi voter. */
   @IsOptional()
   @IsString()
   @MaxLength(300)
@@ -56,7 +56,7 @@ class BulkReviewClaimDto {
 }
 
 /**
- * Review klaim kupon undian (bukti follow), TERPISAH dari vote — vote selalu
+ * Review klaim kupon undian (bukti follow), TERPISAH dari vote, vote selalu
  * langsung sukses. Approve = voter dapat kupon undian. Reject = baris klaim
  * DIHAPUS agar voter bisa klaim ulang dengan bukti yang benar.
  */
@@ -70,8 +70,14 @@ export class CouponClaimsAdminController {
     private readonly couponClaims: CouponClaimsService,
   ) {}
 
+  /**
+   * Daftar klaim untuk direview. Pencarian dilakukan di SQL (bukan filter di
+   * browser) karena hasilnya dibatasi 500 baris: tanpa ini, voter di luar 500
+   * terbaru tak akan pernah ketemu walau namanya diketik di kotak cari.
+   */
   @Get()
-  list(@Query("status") status?: string) {
+  list(@Query("status") status?: string, @Query("search") search?: string) {
+    const q = search?.trim() || null;
     return this.db.query(
       `select cc.id, cc.status, cc.proofs, cc.created_at, cc.reviewed_at,
               pr.id as profile_id, pr.name as voter_name, pr.email as voter_email,
@@ -79,19 +85,53 @@ export class CouponClaimsAdminController {
        from coupon_claims cc
        join profiles pr on pr.id = cc.profile_id
        where ($1::text is null or cc.status = $1)
+         and ($2::text is null or (
+              pr.name ilike '%' || $2 || '%'
+           or pr.email ilike '%' || $2 || '%'
+           or pr.phone_number ilike '%' || $2 || '%'
+         ))
        order by cc.created_at desc
        limit 500`,
-      [status || null],
+      [status || null, q],
+    );
+  }
+
+  /** Riwayat penolakan (arsip). Baris asli sudah dihapus saat ditolak. */
+  @Get("rejections")
+  rejections(@Query("search") search?: string) {
+    const q = search?.trim() || null;
+    return this.db.query(
+      `select r.id, r.reason, r.voter_name, r.voter_email, r.voter_phone,
+              coalesce(r.proofs, '[]'::jsonb) as proofs,
+              r.submitted_at as created_at, r.created_at as rejected_at,
+              'rejected' as status, null::uuid as profile_id,
+              null::timestamptz as reviewed_at
+       from rejections r
+       where r.kind = $1
+         and ($2::text is null or (
+              r.voter_name ilike '%' || $2 || '%'
+           or r.voter_email ilike '%' || $2 || '%'
+           or r.voter_phone ilike '%' || $2 || '%'
+           or r.voter_school ilike '%' || $2 || '%'
+         ))
+       order by r.created_at desc
+       limit 500`,
+      ["coupon_claim", q],
     );
   }
 
   @Get("counts")
   async counts() {
     const rows = await this.db.query(
+      // rejected TIDAK dari coupon_claims: baris klaim dihapus saat ditolak,
+      // jejaknya ada di arsip rejections.
       `select
-         count(*) filter (where status = 'pending')::int  as pending,
-         count(*) filter (where status = 'approved')::int as approved
-       from coupon_claims`,
+         (select count(*) filter (where status = 'pending')
+            from coupon_claims)::int as pending,
+         (select count(*) filter (where status = 'approved')
+            from coupon_claims)::int as approved,
+         (select count(*) from rejections
+            where kind = 'coupon_claim')::int as rejected`,
     );
     return rows[0];
   }
@@ -159,6 +199,18 @@ export class CouponClaimsAdminController {
             " Kamu bisa klaim lagi dengan bukti yang benar.",
         },
       );
+      // Arsipkan dulu: baris klaim hilang setelah ini, jadi tanpa arsip
+      // penolakan tak punya jejak yang bisa ditinjau admin.
+      await em.getRepository(Rejection).insert({
+        kind: "coupon_claim",
+        reason: reason?.trim() || null,
+        voterName: voter?.name ?? null,
+        voterEmail: voter?.email ?? null,
+        voterPhone: voter?.phone_number ?? null,
+        proofs: claim.proofs ?? null,
+        submittedAt: claim.createdAt,
+      });
+
       await em.getRepository(CouponClaim).delete({ id });
       return { ok: true, removed: true };
     }

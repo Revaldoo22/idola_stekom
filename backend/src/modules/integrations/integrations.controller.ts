@@ -19,6 +19,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  IsUUID,
   Matches,
   MaxLength,
   MinLength,
@@ -35,8 +36,10 @@ import {
   School,
 } from "../../database/entities";
 import { ApiKeyGuard } from "../../common/guards/api-key.guard";
+import { RoundsService } from "../rounds/rounds.service";
 import { normalizePhone } from "../../common/utils/normalize";
 import { SchoolsService } from "../schools/schools.service";
+import { AdminService } from "../admin/admin.service";
 
 class UpsertParticipantDto {
   @IsString()
@@ -56,7 +59,7 @@ class UpsertParticipantDto {
   @MaxLength(150)
   school_name!: string;
 
-  /** Kode BPS kabupaten (opsional) — sekolah baru langsung terpetakan. */
+  /** Kode BPS kabupaten (opsional), sekolah baru langsung terpetakan. */
   @IsOptional()
   @IsString()
   @MaxLength(10)
@@ -84,7 +87,7 @@ class ChangePhoneDto {
   new_phone!: string;
 }
 
-/** Update peserta by ID — semua field opsional; hanya yang dikirim diubah. */
+/** Update peserta by ID, semua field opsional; hanya yang dikirim diubah. */
 class UpdateParticipantDto {
   @IsOptional()
   @IsString()
@@ -104,6 +107,11 @@ class UpdateParticipantDto {
   @MinLength(2)
   @MaxLength(150)
   school_name?: string;
+
+  /** ID kabupaten internal (UUID dari GET /regions), prioritas di atas region_code. */
+  @IsOptional()
+  @IsUUID()
+  region_id?: string;
 
   @IsOptional()
   @IsString()
@@ -150,7 +158,7 @@ class SyncParticipantDto {
   @Matches(/^[0-9+\-\s().]+$/)
   phone_number!: string;
 
-  /** NPSN sekolah — OPSIONAL. Bila cocok data master, kabupaten/provinsi
+  /** NPSN sekolah, OPSIONAL. Bila cocok data master, kabupaten/provinsi
    *  otomatis terisi. Bila kosong/salah, fallback ke school_name; sync
    *  TIDAK pernah ditolak karena NPSN. Kunci unik peserta = email. */
   @IsOptional()
@@ -158,13 +166,24 @@ class SyncParticipantDto {
   @MaxLength(20)
   npsn?: string;
 
-  /** Nama sekolah — dipakai bila NPSN kosong / tak cocok master. */
+  /** Nama sekolah, dipakai bila NPSN kosong / tak cocok master. */
   @IsOptional()
   @IsString()
   @MinLength(2)
   @MaxLength(150)
   school_name?: string;
 
+  /**
+   * ID kabupaten internal sistem ini (UUID dari GET /regions). Dipakai kalau
+   * data kalian tidak punya NPSN, prioritas di atas region_code. NPSN yang
+   * valid/cocok master TETAP menang (wilayah sekolah master dianggap paling
+   * akurat); field ini hanya fallback untuk sekolah tanpa NPSN.
+   */
+  @IsOptional()
+  @IsUUID()
+  region_id?: string;
+
+  /** Kode BPS kabupaten (alternatif region_id), fallback bila region_id kosong. */
   @IsOptional()
   @IsString()
   @MaxLength(10)
@@ -190,6 +209,11 @@ class UpsertSchoolDto {
   @MinLength(2)
   @MaxLength(150)
   name!: string;
+
+  /** ID kabupaten internal (UUID dari GET /regions), prioritas di atas region_code. */
+  @IsOptional()
+  @IsUUID()
+  region_id?: string;
 
   @IsOptional()
   @IsString()
@@ -237,6 +261,8 @@ export class IntegrationsController {
     @InjectRepository(ParticipantContent)
     private readonly contents: Repository<ParticipantContent>,
     private readonly schools: SchoolsService,
+    private readonly rounds: RoundsService,
+    private readonly admin: AdminService,
   ) {}
 
   private async findByPhone(phone: string) {
@@ -250,17 +276,21 @@ export class IntegrationsController {
 
   /**
    * Resolusi sekolah untuk sync peserta. Prioritas:
-   *   1. `npsn` → cocokkan sekolah master (dari CSV) — region/kabupaten sudah
-   *      terisi otomatis. Paling andal.
-   *   2. `name` → find-or-create by nama; petakan kabupaten via `regionCode`
-   *      kalau dikirim.
+   *   1. `npsn` → cocokkan sekolah master (dari CSV), region/kabupaten sudah
+   *      terisi otomatis. Paling andal, selalu menang kalau cocok.
+   *   2. `name` → find-or-create by nama; kalau sekolah belum punya
+   *      kabupaten (mis. tak ada NPSN), petakan dari, berurutan:
+   *        a. `regionId`, ID kabupaten internal (UUID dari GET /regions).
+   *        b. `regionCode`, kode BPS (alternatif regionId).
+   *        c. warisan dari sekolah master yang namanya cocok.
    */
   private async resolveSchool(opts: {
     npsn?: string;
     name?: string;
+    regionId?: string;
     regionCode?: string;
   }) {
-    // 1. by NPSN — sekolah master, region sudah ikut. NPSN dinormalisasi
+    // 1. by NPSN, sekolah master, region sudah ikut. NPSN dinormalisasi
     // (buang non-digit) agar spasi/format kecil tak bikin gagal cocok.
     const npsn = (opts.npsn ?? "").replace(/\D/g, "");
     if (npsn) {
@@ -277,13 +307,18 @@ export class IntegrationsController {
     // Jaring pengaman region kalau sekolah (baru/lama) belum punya region:
     if (!school.regionId) {
       let regionId: string | null = null;
-      // a. dari regionCode (kode BPS) bila dikirim.
-      if (opts.regionCode) {
+      // a. dari regionId (UUID kabupaten internal) bila dikirim, dicek ada.
+      if (opts.regionId) {
+        const region = await this.regions.findOneBy({ id: opts.regionId });
+        regionId = region?.id ?? null;
+      }
+      // b. dari regionCode (kode BPS) bila regionId tak dikirim/tak cocok.
+      if (!regionId && opts.regionCode) {
         const region = await this.regions.findOneBy({ code: opts.regionCode });
         regionId = region?.id ?? null;
       }
-      // b. warisi region dari sekolah master yang namanya cocok (NPSN salah/
-      //    kosong tapi nama ada di master) — supaya kabupaten tetap terisi.
+      // c. warisi region dari sekolah master yang namanya cocok (NPSN salah/
+      //    kosong tapi nama ada di master), supaya kabupaten tetap terisi.
       if (!regionId) {
         const rows = (await this.db.query(
           `select region_id from schools
@@ -316,10 +351,11 @@ export class IntegrationsController {
 
     // Sekolah best-effort: NPSN dipakai KALAU cocok master; kalau kosong /
     // salah, fallback ke school_name (find-or-create + petakan region).
-    // NPSN tidak pernah menolak sync — kunci unik peserta hanya EMAIL.
+    // NPSN tidak pernah menolak sync, kunci unik peserta hanya EMAIL.
     const school = await this.resolveSchool({
       npsn: dto.npsn,
       name: dto.school_name,
+      regionId: dto.region_id,
       regionCode: dto.region_code,
     });
 
@@ -416,10 +452,88 @@ export class IntegrationsController {
     const contents = await this.contents.findBy({
       participantId: participant.id,
     });
-    // Sertakan ringkasan (id link, stats voter/poin, peringkat) — sama seperti
+    // Sertakan ringkasan (id link, stats voter/poin, peringkat), sama seperti
     // by-name, tapi email jadi kunci yang unik & tak ambigu.
     const summary = await this.participantSummary(participant.id);
     return { ...summary, participant, contents };
+  }
+
+  /**
+   * Samarkan nomor WA: 4 digit awal + 2 digit akhir. Web kedua dipakai
+   * peserta (bukan panitia), jadi kontak voter tak boleh keluar utuh.
+   */
+  private maskPhone(v: string | null): string | null {
+    if (!v) return null;
+    const d = v.replace(/\s+/g, "");
+    if (d.length <= 6) return "*".repeat(d.length);
+    return `${d.slice(0, 4)}${"*".repeat(d.length - 6)}${d.slice(-2)}`;
+  }
+
+  /** Samarkan email: sisakan 2 huruf awal + domain. */
+  private maskEmail(v: string | null): string | null {
+    if (!v) return null;
+    const at = v.indexOf("@");
+    if (at < 1) return "***";
+    const user = v.slice(0, at);
+    const head = user.slice(0, 2);
+    return `${head}${"*".repeat(Math.max(user.length - 2, 1))}${v.slice(at)}`;
+  }
+
+  /**
+   * Histori voter satu peserta, untuk web kedua menampilkan "siapa saja yang
+   * vote saya": nama, jam, sekolah. SELALU dikunci ke peserta pemilik email
+   * di URL, jadi tak bisa dipakai mengintip voter peserta lain.
+   *
+   * Kontak voter (WA/email) disamarkan dan vote boost admin tak pernah ikut.
+   */
+  @Get("participants/by-email/:email/voters")
+  async voterHistoryByEmail(
+    @Param("email") emailParam: string,
+    @Query() q: Record<string, string>,
+  ) {
+    const email = emailParam.trim().toLowerCase();
+    const participant = await this.participants.findOneBy({ email });
+    if (!participant) throw new NotFoundException("Peserta tidak ditemukan.");
+
+    // participantId dipaksa dari email, BUKAN dari query, supaya web kedua
+    // tak bisa menukarnya ke peserta lain. include_bot juga tak diteruskan.
+    const filters = {
+      participantId: participant.id,
+      from: q.from || undefined,
+      to: q.to || undefined,
+      search: q.search || undefined,
+      school: q.school || undefined,
+      // Pencarian tak boleh menyentuh kontak voter, lihat searchScope.
+      searchScope: "public" as const,
+      sort: (q.sort === "oldest" ? "oldest" : "recent") as "oldest" | "recent",
+      limit: q.limit ? Math.min(Number(q.limit) || 50, 200) : 50,
+      offset: q.offset ? Number(q.offset) || 0 : 0,
+    };
+
+    const [rows, total] = await Promise.all([
+      this.admin.voteHistory(filters),
+      this.admin.voteHistoryCount(filters),
+    ]);
+
+    return {
+      participant: { id: participant.id, name: participant.name },
+      total,
+      count: rows.length,
+      voters: rows.map(
+        (r: Record<string, unknown>) => ({
+          voted_at: r.created_at,
+          voter_name: r.voter_name,
+          voter_phone: this.maskPhone(r.voter_phone as string | null),
+          voter_email: this.maskEmail(r.voter_email as string | null),
+          voter_status: r.voter_status,
+          voter_school: r.voter_school,
+          voter_class: r.voter_class,
+          voter_region: r.voter_region,
+          points: r.points,
+          status: r.status,
+        }),
+      ),
+    };
   }
 
   /**
@@ -459,7 +573,7 @@ export class IntegrationsController {
     )[0] ?? { voters: 0, votes: 0 };
 
     // Peringkat: rank by total_points DESC (id sebagai tiebreak deterministik)
-    // di tiga lingkup — nasional, kabupaten (region sekolah), sekolah.
+    // di tiga lingkup, nasional, kabupaten (region sekolah), sekolah.
     const rank = (
       (await this.db.query(
         `with ranked as (
@@ -543,6 +657,20 @@ export class IntegrationsController {
   private clampLimit(raw?: string) {
     const n = Number(raw ?? 50);
     return Number.isFinite(n) ? Math.min(Math.max(Math.trunc(n), 1), 200) : 50;
+  }
+
+  /**
+   * Peserta yang sudah aman: Golden Buzzer dan/atau peserta lolos gelombang.
+   *   ?source=all|golden_buzzer|round   (default all)
+   *   ?round=Grup A                     (nama gelombang atau UUID)
+   */
+  @Get("winners")
+  async winners(
+    @Query("source") source?: string,
+    @Query("round") round?: string,
+  ) {
+    const rows = (await this.rounds.winners({ source, round })) as unknown[];
+    return { count: rows.length, winners: rows };
   }
 
   /** Peringkat peserta by total poin (nasional). */
@@ -767,7 +895,11 @@ export class IntegrationsController {
 
     // Sekolah (find-or-create + petakan kabupaten).
     if (dto.school_name !== undefined) {
-      const school = await this.resolveSchool({ name: dto.school_name, regionCode: dto.region_code });
+      const school = await this.resolveSchool({
+        name: dto.school_name,
+        regionId: dto.region_id,
+        regionCode: dto.region_code,
+      });
       participant.schoolId = school?.id ?? null;
       if (profile) profile.schoolId = school?.id ?? null;
     }
@@ -792,10 +924,14 @@ export class IntegrationsController {
     return this.regions.find({ order: { name: "ASC" } });
   }
 
-  /** Upsert sekolah by nama (case-insensitive) + set kabupaten via kode BPS. */
+  /** Upsert sekolah by nama (case-insensitive) + set kabupaten via ID/kode BPS. */
   @Post("schools")
   async upsertSchool(@Body() dto: UpsertSchoolDto) {
-    const school = await this.resolveSchool({ name: dto.name, regionCode: dto.region_code });
+    const school = await this.resolveSchool({
+      name: dto.name,
+      regionId: dto.region_id,
+      regionCode: dto.region_code,
+    });
     return { ok: true, school };
   }
 

@@ -20,15 +20,28 @@ class UpdateSettingsDto {
   @Min(1)
   @Max(1000)
   ip_daily_limit?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  spin_wheel_mode?: string;
 }
 
 @Controller()
 export class SettingsController {
   constructor(private readonly settings: SettingsService) {}
 
-  /** Public — the frontend gates overlays (maintenance/closed) with this. */
+  /** Public, the frontend gates overlays (maintenance/closed) with this. */
   @Get("public/settings")
   get() {
+    return this.settings.getPublic();
+  }
+
+  /** GET /api/admin/settings. */
+  @Get("admin/settings")
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles("admin")
+  getAdmin() {
     return this.settings.getPublic();
   }
 

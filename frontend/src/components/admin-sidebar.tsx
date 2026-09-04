@@ -16,15 +16,19 @@ import {
   MapPin,
   Medal,
   Menu,
+  Coins,
+  Megaphone,
   MoreHorizontal,
   School,
   ScrollText,
+  Settings,
   Ticket,
   Trophy,
   UserPlus,
   Users,
   Vote,
   X,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -46,6 +50,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/rounds", label: "Gelombang", icon: Flag },
       { href: "/admin/hasil", label: "Hasil Lolos", icon: Medal },
+      { href: "/admin/golden-buzzer", label: "Golden Buzzer", icon: Zap },
       { href: "/admin/quests", label: "Quest", icon: Trophy },
       { href: "/admin/submissions", label: "Submission", icon: ClipboardCheck },
       { href: "/admin/votes", label: "Verifikasi Vote", icon: Vote },
@@ -67,7 +72,11 @@ const GROUPS: NavGroup[] = [
     label: "Lainnya",
     icon: MoreHorizontal,
     items: [
+      { href: "/admin/kupon", label: "Daftar Kupon", icon: Ticket },
       { href: "/admin/undian", label: "Undian", icon: Gift },
+      { href: "/admin/pengumuman", label: "Pengumuman", icon: Megaphone },
+      { href: "/admin/poin", label: "Penyesuaian Poin", icon: Coins },
+      { href: "/admin/setting", label: "Pengaturan", icon: Settings },
       { href: "/admin/log", label: "Log Aktivitas", icon: ScrollText },
     ],
   },

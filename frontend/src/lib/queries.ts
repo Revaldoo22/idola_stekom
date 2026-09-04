@@ -1,6 +1,6 @@
 "use client";
 
-// Data hooks — SAME signatures as the old Supabase version, but every call
+// Data hooks, SAME signatures as the old Supabase version, but every call
 // now hits the NestJS API (same-origin /api/*, proxied by next.config).
 import {
   useMutation,
@@ -139,7 +139,7 @@ export function useAdminVotersCount(filters: VoterFilters) {
   });
 }
 
-/** All voters matching the filters (no paging) — for the Excel export. */
+/** All voters matching the filters (no paging), for the Excel export. */
 export async function fetchAllAdminVoters(
   filters: VoterFilters,
 ): Promise<AdminVoter[]> {
@@ -188,10 +188,12 @@ export function useParticipantSupporters(participantId?: string) {
 }
 
 export type ActivityLogRow = {
-  kind: "daily5" | "quest";
+  kind: "daily5" | "quest" | "raffle";
+  /** Nama quest, ringkasan vote, atau "KODE-KUPON - Hadiah" untuk undian. */
   source: string;
   voter_name: string;
   voter_phone: string;
+  /** Nama peserta; untuk undian berisi kode kupon. */
   participant_name: string;
   points: number;
   status: string;
@@ -297,7 +299,7 @@ export function useParticipants(schoolId?: string | null) {
   });
 }
 
-/** Admin list — includes the login phone number per participant. */
+/** Admin list, includes the login phone number per participant. */
 export function useAdminParticipants() {
   return useQuery({
     queryKey: ["participants", "admin"],
@@ -311,6 +313,9 @@ export function useLeaderboard(limit = 50) {
     queryFn: () =>
       api<ParticipantWithSchool[]>(`/api/public/leaderboard${qs({ limit })}`),
     refetchInterval: 15_000, // papan skor terasa live
+    // Data lama dipertahankan saat menyegarkan supaya kartu tak
+    // berkedip jadi kosong tiap query dijalankan ulang.
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -475,6 +480,10 @@ export function useAdminStats() {
   return useQuery({
     queryKey: ["admin-stats"],
     queryFn: () => api<AdminStats>("/api/admin/stats"),
+    // Pertahankan data lama saat menyegarkan: tanpa ini seluruh blok
+    // statistik hilang dan diganti "Memuat..." tiap kali query dijalankan
+    // ulang, padahal angkanya sudah ada.
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -490,6 +499,9 @@ export function useDailyVoteSeries(range: SeriesRange = { days: 14 }) {
     queryKey: ["daily-vote-series", range],
     queryFn: () =>
       api<DailyVoteSeriesRow[]>(`/api/admin/vote-series${qs({ ...range })}`),
+    // Data lama dipertahankan saat menyegarkan supaya kartu tak
+    // berkedip jadi kosong tiap query dijalankan ulang.
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -498,6 +510,9 @@ export function useVoterGrowth(range: SeriesRange = { days: 14 }) {
     queryKey: ["voter-growth", range],
     queryFn: () =>
       api<VoterGrowthRow[]>(`/api/admin/voter-growth${qs({ ...range })}`),
+    // Data lama dipertahankan saat menyegarkan supaya kartu tak
+    // berkedip jadi kosong tiap query dijalankan ulang.
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -566,17 +581,40 @@ export type Round = {
   scheduled_close_at: string | null;
   select_mode: "per_region" | "global";
   sequence: number;
+  /** Kuota dasar yang diatur admin. */
   top_n: number;
-  created_at: string;
-  school_count?: number;
+  /**
+   * Kuota efektif = top_n + sisa slot gelombang sebelumnya yang sudah
+   * ditutup. Dihitung ulang server tiap kali dibaca, jadi ikut menyesuaikan
+   * kalau panitia merevisi daftar lolos.
+   */
+  effective_quota?: number;
+  /** Sisa slot yang digulirkan dari gelombang sebelumnya. */
+  carried_slots?: number;
+  /**
+   * Slot terpakai: peserta lolos lewat gelombang + Golden Buzzer yang
+   * slotnya berasal dari gelombang ini.
+   */
   lolos_count?: number;
+  created_at: string;
+  /** Gelombang penutup: tak ada lanjutan setelah ini ditutup. */
+  is_final: boolean;
+  participant_count?: number;
+  school_count?: number;
   total_points?: number;
 };
 
+/**
+ * Satu baris klasemen gelombang. Unit yang dinilai dan lolos adalah PESERTA;
+ * sekolah/kabupaten hanya label asal peserta untuk tampilan & filter.
+ */
 export type RoundStanding = {
-  school_id: string;
-  school_name: string;
+  participant_id: string;
+  participant_name: string;
+  photo_url: string | null;
   status: "active" | "lolos" | "gugur";
+  school_id: string | null;
+  school_name: string;
   region_id: string | null;
   region_name: string;
   province_id: string | null;
@@ -585,6 +623,61 @@ export type RoundStanding = {
   round_points: number;
   points: number;
   votes: number;
+  rank: number;
+};
+
+/**
+ * Satu peserta yang lolos, beserta gelombang tempat dia lolos. Dipakai admin
+ * (Hasil Lolos + ekspor) dan halaman publik peserta lolos.
+ */
+export type QualifiedParticipant = {
+  participant_id: string;
+  participant_name: string;
+  photo_url: string | null;
+  school_id: string | null;
+  school_name: string;
+  region_name: string;
+  province_name: string;
+  round_id: string;
+  round_name: string;
+  sequence: number;
+  ends_at: string | null;
+  points: number;
+};
+
+/** Peserta yang dipilih panitia sebagai Golden Buzzer (langsung lolos). */
+export type GoldenBuzzer = {
+  id: string;
+  name: string;
+  photo_url: string | null;
+  description: string | null;
+  total_points: number;
+  golden_buzzer_at: string | null;
+  school_id: string | null;
+  school_name: string;
+  region_name: string;
+  province_name: string;
+};
+
+/**
+ * Peserta yang sudah aman, lewat Golden Buzzer atau lolos gelombang.
+ * Dipakai endpoint gabungan /winners.
+ */
+export type Winner = {
+  via: "golden_buzzer" | "round";
+  participant_id: string;
+  participant_name: string;
+  photo_url: string | null;
+  description: string | null;
+  school_id: string | null;
+  school_name: string;
+  region_name: string;
+  province_name: string;
+  round_id: string | null;
+  round_name: string | null;
+  sequence: number | null;
+  points: number;
+  decided_at: string | null;
 };
 
 export type HeatmapRow = {
@@ -599,7 +692,7 @@ export type HeatmapRow = {
   votes: number;
 };
 
-/** Kabupaten/kota (regency) — dipakai filter admin, akun voter, peringkat. */
+/** Kabupaten/kota (regency), dipakai filter admin, akun voter, peringkat. */
 export function useRegions() {
   return useQuery({
     queryKey: ["regions", "regency"],
@@ -636,6 +729,66 @@ export function useHeatmap(roundId?: string) {
       api<HeatmapRow[]>(
         `/api/public/heatmap${roundId ? `?round_id=${roundId}` : ""}`,
       ),
+  });
+}
+
+/** Peserta lolos untuk admin. Kosongkan roundId = semua gelombang. */
+export function useQualified(roundId?: string) {
+  return useQuery({
+    queryKey: ["qualified", roundId ?? "all"],
+    queryFn: () =>
+      api<QualifiedParticipant[]>(
+        `/api/admin/rounds/qualified${qs({ round_id: roundId || undefined })}`,
+      ),
+  });
+}
+
+/** Peserta lolos, versi publik. */
+export function usePublicQualified(roundId?: string) {
+  return useQuery({
+    queryKey: ["public-qualified", roundId ?? "all"],
+    queryFn: () =>
+      api<QualifiedParticipant[]>(
+        `/api/public/qualified${qs({ round_id: roundId || undefined })}`,
+      ),
+  });
+}
+
+/** Golden Buzzer untuk admin. */
+export function useGoldenBuzzers() {
+  return useQuery({
+    queryKey: ["golden-buzzer", "admin"],
+    queryFn: () =>
+      api<GoldenBuzzer[]>("/api/admin/participants/golden-buzzer"),
+  });
+}
+
+/** Golden Buzzer, versi publik. */
+export function usePublicGoldenBuzzers() {
+  return useQuery({
+    queryKey: ["golden-buzzer", "public"],
+    queryFn: () => api<GoldenBuzzer[]>("/api/public/golden-buzzer"),
+  });
+}
+
+/**
+ * Peserta yang sudah aman (Golden Buzzer + lolos gelombang).
+ * source: "all" | "golden_buzzer" | "round"; round: nama gelombang atau UUID.
+ */
+export function useWinners(opts: { source?: string; round?: string } = {}) {
+  const { source, round } = opts;
+  return useQuery({
+    queryKey: ["winners", source ?? "all", round ?? "all"],
+    queryFn: () =>
+      api<Winner[]>(`/api/admin/rounds/winners${qs({ source, round })}`),
+  });
+}
+
+/** Riwayat pengiriman pengumuman untuk admin. */
+export function useAnnouncementLog() {
+  return useQuery({
+    queryKey: ["announcement-log"],
+    queryFn: () => api<AnnouncementLog[]>("/api/admin/notifications/log"),
   });
 }
 
@@ -728,6 +881,9 @@ export function usePmbInsight() {
   return useQuery({
     queryKey: ["pmb-insight"],
     queryFn: () => api<PmbInsight>("/api/admin/pmb-insight"),
+    // Data lama dipertahankan saat menyegarkan supaya kartu tak
+    // berkedip jadi kosong tiap query dijalankan ulang.
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -736,6 +892,9 @@ export type CouponRow = {
   source: string;
   created_at: string;
   owner_name: string | null;
+  /** Terisi kalau kupon ini sudah terpilih sebagai pemenang undian. */
+  won_at: string | null;
+  prize: string | null;
 };
 
 export function useMyCoupons(enabled: boolean) {
@@ -778,6 +937,23 @@ export type NotificationRow = {
   body: string;
   read_at: string | null;
   created_at: string;
+};
+
+/** Satu baris riwayat pengiriman pengumuman + statistik kliknya. */
+export type AnnouncementLog = {
+  id: string;
+  title: string;
+  body: string;
+  sent_count: number;
+  only_non_participants: boolean;
+  sent_by: string | null;
+  created_at: string;
+  /** Total klik tautan (satu akun bisa mengklik berkali-kali). */
+  clicks: number;
+  /** Akun unik yang mengklik. */
+  click_accounts: number;
+  /** Notifikasi yang sudah dibuka penerimanya. */
+  read_count: number;
 };
 
 export type NotificationsResult = {

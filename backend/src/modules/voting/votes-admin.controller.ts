@@ -21,7 +21,7 @@ import {
   MaxLength,
 } from "class-validator";
 import { DataSource, EntityManager } from "typeorm";
-import { DailyVote, Participant, Profile } from "../../database/entities";
+import { DailyVote, Participant, Profile, Rejection } from "../../database/entities";
 import { JwtGuard } from "../../common/guards/jwt.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
@@ -31,7 +31,7 @@ class ReviewVoteDto {
   @IsIn(["approved", "rejected"])
   status!: "approved" | "rejected";
 
-  /** Alasan penolakan — masuk ke notifikasi voter. */
+  /** Alasan penolakan, masuk ke notifikasi voter. */
   @IsOptional()
   @IsString()
   @MaxLength(300)
@@ -57,7 +57,7 @@ class BulkReviewVoteDto {
 /**
  * Review vote pertama voter (bukti follow 2 saluran WhatsApp). Approve =
  * poin masuk ke peserta + voter ditandai follow-WA terverifikasi (TIDAK
- * menerbitkan kupon — kupon undian HP adalah klaim terpisah, lihat
+ * menerbitkan kupon, kupon undian HP adalah klaim terpisah, lihat
  * CouponClaimsAdminController). Reject = baris vote DIHAPUS agar hak vote
  * voter kembali (bisa vote ulang dengan bukti yang benar).
  */
@@ -70,8 +70,14 @@ export class VotesAdminController {
     private readonly notifications: NotificationsService,
   ) {}
 
+  /**
+   * Daftar vote untuk direview. Pencarian dilakukan di SQL (bukan filter di
+   * browser) karena hasilnya dibatasi 500 baris: tanpa ini, voter di luar 500
+   * terbaru tak akan pernah ketemu walau namanya diketik di kotak cari.
+   */
   @Get()
-  list(@Query("status") status?: string) {
+  list(@Query("status") status?: string, @Query("search") search?: string) {
+    const q = search?.trim() || null;
     return this.db.query(
       `select dv.id, dv.status, dv.points, dv.created_at,
               dv.voter_name, dv.voter_phone, dv.voter_email,
@@ -88,20 +94,66 @@ export class VotesAdminController {
        where dv.is_bot = false
          and dv.follow_proofs is not null
          and ($1::text is null or dv.status = $1)
+         and ($2::text is null or (
+              dv.voter_name ilike '%' || $2 || '%'
+           or dv.voter_email ilike '%' || $2 || '%'
+           or dv.voter_phone ilike '%' || $2 || '%'
+           or dv.voter_school ilike '%' || $2 || '%'
+           or p.name ilike '%' || $2 || '%'
+           or sch.name ilike '%' || $2 || '%'
+         ))
        order by dv.created_at desc
        limit 500`,
-      [status || null],
+      [status || null, q],
+    );
+  }
+
+  /** Riwayat penolakan (arsip). Baris asli sudah dihapus saat ditolak. */
+  @Get("rejections")
+  rejections(@Query("search") search?: string) {
+    const q = search?.trim() || null;
+    return this.db.query(
+      `select r.id, r.reason, r.voter_name, r.voter_email, r.voter_phone,
+              r.voter_school, r.proofs as follow_proofs,
+              r.submitted_at as created_at, r.created_at as rejected_at,
+              'rejected' as status, 0 as points,
+              null::text as voter_status, null::text as voter_class,
+              json_build_object(
+                'id', r.participant_id, 'name',
+                coalesce(r.participant_name, 'Peserta dihapus'),
+                'schools', case when r.participant_school is null then null
+                                else json_build_object(
+                                  'name', r.participant_school) end
+              ) as participants
+       from rejections r
+       where r.kind = $1
+         and ($2::text is null or (
+              r.voter_name ilike '%' || $2 || '%'
+           or r.voter_email ilike '%' || $2 || '%'
+           or r.voter_phone ilike '%' || $2 || '%'
+           or r.voter_school ilike '%' || $2 || '%'
+           or r.participant_name ilike '%' || $2 || '%'
+           or r.participant_school ilike '%' || $2 || '%'
+         ))
+       order by r.created_at desc
+       limit 500`,
+      ["vote", q],
     );
   }
 
   @Get("counts")
   async counts() {
     const rows = await this.db.query(
+      // rejected TIDAK dari daily_votes: baris vote dihapus saat ditolak
+      // (unique index dibebaskan), jejaknya ada di arsip rejections.
       `select
-         count(*) filter (where status = 'pending')::int  as pending,
-         count(*) filter (where status = 'approved')::int as approved
-       from daily_votes
-       where is_bot = false and follow_proofs is not null`,
+         (select count(*) filter (where status = 'pending')
+            from daily_votes
+            where is_bot = false and follow_proofs is not null)::int as pending,
+         (select count(*) filter (where status = 'approved')
+            from daily_votes
+            where is_bot = false and follow_proofs is not null)::int as approved,
+         (select count(*) from rejections where kind = 'vote')::int as rejected`,
     );
     return rows[0];
   }
@@ -156,7 +208,7 @@ export class VotesAdminController {
             .increment({ id: vote.participantId }, "totalPoints", -vote.points);
         }
 
-        // Notifikasi ke voter SEBELUM baris dihapus — alasan penolakan +
+        // Notifikasi ke voter SEBELUM baris dihapus, alasan penolakan +
         // ajakan vote ulang. Baris vote hilang, jadi ini satu-satunya jejak.
         const participant = await em
           .getRepository(Participant)
@@ -177,6 +229,35 @@ export class VotesAdminController {
           },
         );
 
+        // Arsipkan dulu: baris vote hilang setelah ini, jadi tanpa arsip
+        // penolakan tak punya jejak yang bisa ditinjau admin.
+        const sch = await em
+          .getRepository(Participant)
+          .createQueryBuilder("p")
+          .leftJoin("schools", "s", "s.id = p.school_id")
+          .select("s.name", "school")
+          .where("p.id = :id", { id: vote.participantId })
+          .getRawOne<{ school: string | null }>();
+        await em.getRepository(Rejection).insert({
+          kind: "vote",
+          reason: reason?.trim() || null,
+          voterName: vote.voterName,
+          voterEmail: vote.voterEmail,
+          voterPhone: vote.voterPhone,
+          voterSchool: vote.voterSchool,
+          participantId: vote.participantId,
+          participantName: participant?.name ?? null,
+          participantSchool: sch?.school ?? null,
+          // followProofs bisa array (format baru) atau objek (format lama);
+          // arsip menyimpannya sebagai array URL.
+          proofs: Array.isArray(vote.followProofs)
+            ? vote.followProofs
+            : vote.followProofs
+              ? Object.values(vote.followProofs)
+              : null,
+          submittedAt: vote.createdAt,
+        });
+
         await em.getRepository(DailyVote).delete({ id });
         return { ok: true, removed: true };
       }
@@ -189,7 +270,7 @@ export class VotesAdminController {
         .getRepository(Participant)
         .increment({ id: vote.participantId }, "totalPoints", vote.points);
 
-      // Tandai follow-WA terverifikasi (bukan followedAt — field itu khusus
+      // Tandai follow-WA terverifikasi (bukan followedAt, field itu khusus
       // klaim kupon IG/TikTok, terpisah dari vote). Tidak menerbitkan kupon.
       if (vote.voterEmail) {
         const profile = await em

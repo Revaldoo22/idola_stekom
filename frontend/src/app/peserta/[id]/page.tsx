@@ -44,13 +44,12 @@ import {
   useQuests,
   useSettings,
   useVoterToday,
-  submitCouponClaim,
 } from "@/lib/queries";
-import { CheckCircle2, ExternalLink } from "lucide-react";
+import { CheckCircle2, ExternalLink, Medal, Zap } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { getFingerprint } from "@/lib/fingerprint";
 import { compressImage } from "@/lib/image-compress";
-import { formatNumber, trackEvent } from "@/lib/utils";
+import { cn, formatNumber, trackEvent } from "@/lib/utils";
 import { voterInfoSchema } from "@/lib/validations";
 import {
   VoterFormFields,
@@ -59,6 +58,10 @@ import {
 } from "@/components/voter-form-fields";
 import { useConfirm } from "@/components/confirm-dialog";
 import { PhotoLightbox } from "@/components/photo-lightbox";
+import {
+  ClaimCouponDialog,
+  useFollowTasks,
+} from "@/components/claim-coupon-dialog";
 import type { ParticipantWithSchool, Quest } from "@/types/database";
 import { useTranslation } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/types";
@@ -72,15 +75,20 @@ export default function PublicParticipantPage({
   const t = useTranslation("peserta");
   // Pop-up zoom foto peserta (latar halaman diblur).
   const [photoOpen, setPhotoOpen] = React.useState(false);
-  // Dialog klaim kupon undian — otomatis terbuka begitu vote sukses.
+  // Dialog klaim kupon undian (syarat follow + upload bukti).
   const [claimOpen, setClaimOpen] = React.useState(false);
+  // Dialog penawaran ("teaser"), muncul dengan jeda setelah vote sukses,
+  // sebelum syarat klaim ditampilkan. Kalau ditutup tanpa klaim, CTA
+  // persisten di card (berbasis status followed, bukan state lokal) tetap
+  // menawarkan klaim kapan saja, termasuk setelah reload halaman.
+  const [teaserOpen, setTeaserOpen] = React.useState(false);
   const anonVoter = useVoterForm();
   const { data: me } = useMyProfile();
   const { data: quests } = useQuests(true);
   const { data: settings } = useSettings();
   const eventClosed = settings ? !settings.event_open : false;
 
-  // Vote milik akun ini — untuk label "sudah kamu vote" di peserta terkait.
+  // Vote milik akun ini, untuk label "sudah kamu vote" di peserta terkait.
   const { data: myVotes } = useVoterToday(!!me);
   const myVote = (myVotes?.votes ?? []).find((v) => v.participant_id === id);
   const votedThis = !!myVote;
@@ -91,7 +99,7 @@ export default function PublicParticipantPage({
   // Aksi dukung/quest wajib login sebagai pendukung.
   // gate = null berarti boleh lanjut; selain itu fungsi pengalihan.
   // Peserta (voter yang email-nya cocok record peserta) TETAP boleh vote
-  // peserta lain — yang diblok hanya vote ke DIRINYA sendiri. Akun admin
+  // peserta lain, yang diblok hanya vote ke DIRINYA sendiri. Akun admin
   // sungguhan tidak boleh vote sama sekali.
   const isSelf = !!me && me.self_participant_id === id;
   const gate: (() => void) | null = !me
@@ -139,6 +147,12 @@ export default function PublicParticipantPage({
     queryFn: () =>
       api<ParticipantWithSchool | null>(`/api/public/participants/${id}`),
   });
+
+  // Peserta yang sudah lolos gelombang atau Golden Buzzer berhenti
+  // berkompetisi: vote & quest ditutup (backend juga menolaknya dengan
+  // ALREADY_QUALIFIED / GOLDEN_BUZZER).
+  const isGolden = !!participant?.golden_buzzer;
+  const isQualified = !!participant?.qualified || isGolden;
 
   return (
     <div className="min-h-screen">
@@ -190,7 +204,7 @@ export default function PublicParticipantPage({
                     sizes="(max-width:768px) 100vw, 768px"
                     className="object-cover"
                     // Foto di-serve via redirect 302 ke signed URL storage
-                    // (berbatas waktu) — optimizer Next gagal; pakai apa adanya.
+                    // (berbatas waktu), optimizer Next gagal; pakai apa adanya.
                     unoptimized
                   />
                 </button>
@@ -235,9 +249,29 @@ export default function PublicParticipantPage({
                       </p>
                     )}
                   </div>
-                  <Badge variant="accent" className="shrink-0">
-                    {formatNumber(participant.total_points)} {t.points}
-                  </Badge>
+                  {/* Poin gelombang berjalan diutamakan supaya angkanya sama
+                      dengan klasemen; total poin event tetap ditampilkan
+                      sebagai keterangan. */}
+                  <div className="shrink-0 text-right">
+                    <Badge variant="accent">
+                      {formatNumber(
+                        participant.round_points ?? participant.total_points,
+                      )}{" "}
+                      {t.points}
+                    </Badge>
+                    {participant.round_points != null && (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {participant.round_name
+                          ? t.pointsInRound(participant.round_name)
+                          : null}
+                        <span className="block">
+                          {t.pointsTotal(
+                            formatNumber(participant.total_points),
+                          )}
+                        </span>
+                      </p>
+                    )}
+                  </div>
                 </div>
                 {participant.description && (
                   <p className="text-sm">{participant.description}</p>
@@ -245,18 +279,68 @@ export default function PublicParticipantPage({
 
                 <ShareButton name={participant.name} />
 
-                {votedThis ? (
-                  votePending ? (
-                    <div className="flex w-full items-center justify-center gap-2 rounded-lg border border-amber-400/50 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-600 dark:text-amber-400">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {t.votedPendingReview}
+                {/* Peserta yang sudah aman: seluruh area vote diganti panel
+                    perayaan, tak ada tombol dukung sama sekali. */}
+                {isGolden || isQualified ? (
+                  <WinnerBanner
+                    kind={isGolden ? "golden" : "round"}
+                    roundName={participant.qualified_round_name}
+                  />
+                ) : votedThis ? (
+                  <>
+                  {votePending ? (
+                    /* Panel menetap, bukan bar satu baris: toast sukses cuma
+                       muncul beberapa detik, padahal instruksinya (tunggu 24
+                       jam, cek lonceng) justru perlu terbaca kapan saja voter
+                       membuka halaman ini. */
+                    <div className="w-full space-y-1.5 rounded-xl border border-amber-400/50 bg-amber-500/10 p-4">
+                      <p className="flex items-center gap-2 text-sm font-bold text-amber-700 dark:text-amber-400">
+                        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                        {t.pendingNoticeTitle}
+                      </p>
+                      <p className="text-xs leading-relaxed text-amber-900/80 dark:text-amber-200/80">
+                        {t.pendingNoticeBody}
+                      </p>
+                      <p className="text-xs leading-relaxed text-amber-900/70 dark:text-amber-200/70">
+                        {t.pendingNoticeRejected}
+                      </p>
                     </div>
                   ) : (
                     <div className="flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300/60 bg-gradient-to-r from-amber-400 to-yellow-300 px-4 py-2.5 text-sm font-bold text-amber-950 shadow-[0_0_18px_rgba(251,191,36,0.55)]">
                       <BadgeCheck className="h-4 w-4" />
                       {t.votedThanks}
                     </div>
-                  )
+                  )}
+                  {/* CTA persisten: voter sudah vote tapi belum klaim kupon
+                      undian (belum follow IG/TikTok), tetap tersedia walau
+                      dialog penawaran sudah ditutup atau halaman di-reload. */}
+                  {!isParticipant && !followed && (
+                    <button
+                      type="button"
+                      onClick={() => setClaimOpen(true)}
+                      className="group relative flex w-full flex-col items-center gap-2 overflow-hidden rounded-2xl border-2 border-dashed border-amber-400/60 bg-gradient-to-br from-amber-50 via-orange-50 to-amber-50 p-4 text-center shadow-md shadow-amber-500/10 transition-transform active:scale-[0.98] dark:from-amber-950/40 dark:via-orange-950/30 dark:to-amber-950/40 sm:flex-row sm:gap-3 sm:rounded-xl sm:p-3 sm:text-left sm:shadow-none sm:hover:scale-[1.01]"
+                    >
+                      <span className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-amber-400/20 blur-xl sm:hidden" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/hp.png"
+                        alt=""
+                        className="h-20 w-20 shrink-0 object-contain drop-shadow-sm sm:h-12 sm:w-12"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-extrabold leading-tight sm:truncate sm:text-sm">
+                          {t.claimCtaCard}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground sm:truncate">
+                          {t.claimCtaCardDesc}
+                        </p>
+                      </div>
+                      <span className="mt-1 inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm sm:mt-0 sm:bg-transparent sm:px-0 sm:py-0 sm:text-primary sm:shadow-none">
+                        {t.claimTeaserCta} →
+                      </span>
+                    </button>
+                  )}
+                  </>
                 ) : (
                   <VoteDialog
                     participantId={id}
@@ -265,14 +349,24 @@ export default function PublicParticipantPage({
                     locked={locked}
                     waFollowed={waFollowed || isParticipant}
                     gate={gate}
-                    disabled={eventClosed}
+                    disabled={eventClosed || isQualified}
+                    disabledReason={
+                      isGolden
+                        ? t.goldenNoVote
+                        : isQualified
+                          ? t.qualifiedNoVote
+                          : undefined
+                    }
                     onVoted={() => {
                       refetch();
                       // Kupon undian sudah otomatis untuk peserta YCS / voter
-                      // yang follow IG/TikTok-nya sudah terverifikasi — selain
-                      // itu, langsung tawarkan klaim kupon begitu vote
-                      // terkirim (tak perlu tunggu admin approve bukti WA).
-                      if (!isParticipant && !followed) setClaimOpen(true);
+                      // yang follow IG/TikTok-nya sudah terverifikasi, selain
+                      // itu, tawarkan klaim kupon lewat dialog penawaran dulu
+                      // (jeda sedikit biar tidak langsung menimpa toast sukses
+                      // vote), baru syarat follow muncul kalau diklik klaim.
+                      if (!isParticipant && !followed) {
+                        setTimeout(() => setTeaserOpen(true), 800);
+                      }
                     }}
                   />
                 )}
@@ -290,6 +384,15 @@ export default function PublicParticipantPage({
                 onClose={() => setPhotoOpen(false)}
               />
             )}
+
+            <ClaimTeaserDialog
+              open={teaserOpen}
+              onOpenChange={setTeaserOpen}
+              onClaim={() => {
+                setTeaserOpen(false);
+                setClaimOpen(true);
+              }}
+            />
 
             <ClaimCouponDialog
               open={claimOpen}
@@ -316,7 +419,7 @@ export default function PublicParticipantPage({
                       voter={voter}
                       locked={locked}
                       gate={gate}
-                      disabled={eventClosed}
+                      disabled={eventClosed || isQualified}
                     />
                   ))}
                 </div>
@@ -333,33 +436,7 @@ export default function PublicParticipantPage({
 type VoterCtx = ReturnType<typeof useVoterForm>;
 
 /**
- * Tugas follow IG/TikTok — syarat KLAIM KUPON undian HP (setelah vote sukses,
- * terpisah dari vote itu sendiri).
- */
-const FOLLOW_TASK_URLS = [
-  "https://tiktok.com/@stekomuniversity",
-  "https://instagram.com/universitasstekom",
-  "https://tiktok.com/@toploker.com",
-  "https://instagram.com/toplokercom",
-];
-const FOLLOW_TASK_KEYS = [
-  "stekom_tiktok",
-  "stekom_ig",
-  "toploker_tiktok",
-  "toploker_ig",
-];
-
-function useFollowTasks(t: Dictionary["peserta"]) {
-  return t.followTasks.map((task, i) => ({
-    key: FOLLOW_TASK_KEYS[i],
-    title: task.title,
-    url: FOLLOW_TASK_URLS[i],
-    linkLabel: task.linkLabel,
-  }));
-}
-
-/**
- * Tugas follow 2 saluran WhatsApp — syarat VOTE pertama (wajib sebelum vote
+ * Tugas follow 2 saluran WhatsApp, syarat VOTE pertama (wajib sebelum vote
  * diterima). Key HARUS sinkron dengan REQUIRED_FOLLOW_TASKS di backend.
  */
 const WA_FOLLOW_TASK_URLS = [
@@ -383,148 +460,49 @@ function validateVoter(data: VoterFormData, t: Dictionary["peserta"]): string | 
 }
 
 /**
- * Klaim kupon undian handphone: follow akun Univ STEKOM/TopLoker + upload
- * bukti, TERPISAH dari vote (vote sudah sukses sebelum dialog ini muncul).
+ * Dialog penawaran ("teaser"), muncul dengan jeda setelah vote sukses,
+ * SEBELUM syarat follow ditampilkan. Tujuannya membuat ajakan klaim kupon
+ * terasa seperti hadiah, bukan langsung dibebani syarat. "Klaim Sekarang"
+ * membuka ClaimCouponDialog (syarat follow); ditutup (X) tidak menghilangkan
+ * kesempatan, CTA persisten tetap muncul di card peserta.
  */
-function ClaimCouponDialog({
+function ClaimTeaserDialog({
   open,
   onOpenChange,
-  onClaimed,
+  onClaim,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onClaimed: () => void;
+  onClaim: () => void;
 }) {
   const t = useTranslation("peserta");
-  const followTasks = useFollowTasks(t);
-  const MAX_PROOFS = 12;
-  const [proofFiles, setProofFiles] = React.useState<File[]>([]);
-  const [busy, setBusy] = React.useState(false);
-  const qc = useQueryClient();
-
-  async function uploadProof(file: File): Promise<string> {
-    const img = await compressImage(file, { maxSize: 900, quality: 0.7 });
-    const fd = new FormData();
-    fd.append("file", img);
-    const up = await api<{ url: string }>("/api/upload-proof", {
-      method: "POST",
-      body: fd,
-    });
-    return new URL(up.url, window.location.origin).toString();
-  }
-
-  async function submitClaim() {
-    if (proofFiles.length === 0) {
-      toast.error(t.uploadProofFirst);
-      return;
-    }
-    setBusy(true);
-    try {
-      const proofs: string[] = [];
-      try {
-        for (const f of proofFiles) proofs.push(await uploadProof(f));
-      } catch (err) {
-        toast.error(
-          t.uploadProofFailed(err instanceof Error ? err.message : ""),
-        );
-        return;
-      }
-      await submitCouponClaim(proofs);
-      toast.success(t.claimSubmitted);
-      qc.invalidateQueries({ queryKey: ["coupon-claim"] });
-      qc.invalidateQueries({ queryKey: ["profile", "me"] });
-      setProofFiles([]);
-      onOpenChange(false);
-      onClaimed();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.voteFailed);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-sm text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/hp.png"
+          alt=""
+          className="mx-auto h-28 w-28 object-contain"
+        />
         <DialogHeader>
-          <DialogTitle>{t.followTaskDialogTitle}</DialogTitle>
-          <DialogDescription>
-            {t.followTaskDialogDescription(followTasks.length)}
+          <DialogTitle className="text-center text-xl">
+            {t.claimTeaserTitle}
+          </DialogTitle>
+          <DialogDescription className="text-center">
+            {t.claimTeaserBody}
           </DialogDescription>
         </DialogHeader>
-
-        {/* Daftar tugas: klik untuk membuka akun/saluran yang harus di-follow. */}
-        <div className="max-h-[35vh] space-y-1.5 overflow-y-auto pr-1">
-          {followTasks.map((task, i) => (
-            <a
-              key={task.key}
-              href={task.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-between gap-2 rounded-lg border p-2.5 text-sm transition-colors hover:border-primary/40 hover:bg-primary/5"
-            >
-              <span className="min-w-0 truncate font-medium">
-                {i + 1}. {task.title}
-              </span>
-              <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </a>
-          ))}
-        </div>
-
-        {/* Satu tombol upload untuk semua bukti — boleh pilih banyak sekaligus. */}
-        <div className="space-y-1.5">
-          <Label>{t.screenshotProofLabel}</Label>
-          <Input
-            type="file"
-            accept="image/*"
-            multiple
-            disabled={proofFiles.length >= MAX_PROOFS}
-            onChange={(e) => {
-              const picked = Array.from(e.target.files ?? []);
-              setProofFiles((prev) => {
-                const merged = [...prev];
-                for (const f of picked) {
-                  if (
-                    merged.length < MAX_PROOFS &&
-                    !merged.some((x) => x.name === f.name && x.size === f.size)
-                  )
-                    merged.push(f);
-                }
-                return merged;
-              });
-              e.target.value = ""; // reset agar bisa pilih lagi
-            }}
-          />
-          {proofFiles.length > 0 && (
-            <ul className="space-y-1">
-              {proofFiles.map((f, i) => (
-                <li
-                  key={i}
-                  className="flex items-center justify-between gap-2 rounded-md border px-2 py-1 text-xs"
-                >
-                  <span className="min-w-0 truncate">{f.name}</span>
-                  <button
-                    type="button"
-                    className="shrink-0 text-destructive"
-                    onClick={() =>
-                      setProofFiles((prev) => prev.filter((_, j) => j !== i))
-                    }
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </li>
-              ))}
-              <li className="text-xs text-muted-foreground">
-                {proofFiles.length}/{MAX_PROOFS} {t.files}
-              </li>
-            </ul>
-          )}
-        </div>
-
-        <p className="text-xs text-muted-foreground">{t.proofNote}</p>
-        <Button onClick={submitClaim} disabled={busy || proofFiles.length === 0}>
-          {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-          {t.sendProofAndVote(proofFiles.length)}
+        <Button className="w-full" onClick={onClaim}>
+          {t.claimTeaserCta}
+        </Button>
+        <Button
+          variant="ghost"
+          className="w-full"
+          onClick={() => onOpenChange(false)}
+        >
+          {t.claimTeaserLater}
         </Button>
       </DialogContent>
     </Dialog>
@@ -558,6 +536,90 @@ function ShareButton({ name }: { name: string }) {
   );
 }
 
+/**
+ * Panel perayaan untuk peserta yang sudah aman. Menggantikan seluruh area
+ * vote & quest: peserta ini tidak menerima dukungan lagi, jadi menampilkan
+ * tombol yang mati hanya bikin bingung.
+ */
+function WinnerBanner({
+  kind,
+  roundName,
+}: {
+  kind: "golden" | "round";
+  roundName?: string | null;
+}) {
+  const t = useTranslation("peserta");
+  const golden = kind === "golden";
+
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-2xl border-2 p-6 text-center",
+        golden
+          ? "border-amber-400/70 bg-gradient-to-b from-amber-50 to-amber-100/40 dark:from-amber-500/10 dark:to-amber-500/5"
+          : "border-emerald-500/50 bg-gradient-to-b from-emerald-50 to-emerald-100/40 dark:from-emerald-500/10 dark:to-emerald-500/5",
+      )}
+    >
+      {/* Cahaya latar, murni hiasan */}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute -top-16 left-1/2 h-40 w-40 -translate-x-1/2 rounded-full blur-3xl",
+          golden ? "bg-amber-400/30" : "bg-emerald-400/25",
+        )}
+      />
+
+      <div className="relative space-y-3">
+        <span
+          className={cn(
+            "mx-auto flex h-16 w-16 items-center justify-center rounded-full shadow-lg",
+            golden
+              ? "bg-gradient-to-br from-amber-400 to-yellow-300 shadow-amber-400/40"
+              : "bg-gradient-to-br from-emerald-500 to-teal-400 shadow-emerald-500/40",
+          )}
+        >
+          {golden ? (
+            <Zap className="h-8 w-8 text-white" />
+          ) : (
+            <Medal className="h-8 w-8 text-white" />
+          )}
+        </span>
+
+        <div>
+          <p
+            className={cn(
+              "text-xl font-extrabold tracking-tight",
+              golden
+                ? "text-amber-700 dark:text-amber-400"
+                : "text-emerald-700 dark:text-emerald-400",
+            )}
+          >
+            {golden ? t.goldenCelebrateTitle : t.qualifiedCelebrateTitle}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {golden
+              ? t.goldenCelebrateDesc
+              : t.qualifiedCelebrateDesc(roundName ?? "")}
+          </p>
+        </div>
+
+        <p
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold",
+            golden
+              ? "bg-amber-500 text-white"
+              : "bg-emerald-600 text-white",
+          )}
+        >
+          <BadgeCheck className="h-3.5 w-3.5" />
+          {golden ? t.goldenBadgeBig : t.qualifiedBadgeBig}
+        </p>
+
+      </div>
+    </div>
+  );
+}
+
 function VoteDialog({
   participantId,
   participantName,
@@ -566,6 +628,7 @@ function VoteDialog({
   waFollowed,
   gate,
   disabled,
+  disabledReason,
   onVoted,
 }: {
   participantId: string;
@@ -578,6 +641,8 @@ function VoteDialog({
   /** Belum boleh vote (belum login / belum wizard / bukan voter). */
   gate: (() => void) | null;
   disabled: boolean;
+  /** Teks pengganti saat tombol mati bukan karena event ditutup. */
+  disabledReason?: string;
   /** Vote sukses (terkirim, terlepas pending/approved bukti follow WA). */
   onVoted: () => void;
 }) {
@@ -681,7 +746,7 @@ function VoteDialog({
       // Refresh label "sudah kamu vote" di card & halaman peserta.
       qc.invalidateQueries({ queryKey: ["voter-today"] });
       if (data.pending) {
-        // Bukti follow WA direview admin dulu — poin masuk setelah di-approve.
+        // Bukti follow WA direview admin dulu, poin masuk setelah di-approve.
         toast.success(t.votePendingSuccess);
         qc.invalidateQueries({ queryKey: ["profile", "me"] });
       } else {
@@ -705,7 +770,7 @@ function VoteDialog({
         onClick={gate}
       >
         <Heart className="h-4 w-4" />
-        {disabled ? t.eventClosed : t.support}
+        {disabled ? (disabledReason ?? t.eventClosed) : t.support}
       </Button>
     );
   }
@@ -809,7 +874,7 @@ function VoteDialog({
         ) : (
           <Heart className="h-4 w-4" />
         )}
-        {disabled ? t.eventClosed : t.support}
+        {disabled ? (disabledReason ?? t.eventClosed) : t.support}
       </Button>
       </>
     );
@@ -824,7 +889,7 @@ function VoteDialog({
           disabled={disabled}
         >
           <Heart className="h-4 w-4" />
-          {disabled ? t.eventClosed : t.support}
+          {disabled ? (disabledReason ?? t.eventClosed) : t.support}
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -859,7 +924,7 @@ function QuestCard({
   voter: VoterCtx;
   /** Voter login + onboarded: dialog hanya untuk bukti, tanpa form data. */
   locked: boolean;
-  /** Belum boleh mengerjakan quest — tombol mengalihkan. */
+  /** Belum boleh mengerjakan quest, tombol mengalihkan. */
   gate: (() => void) | null;
   disabled: boolean;
 }) {
@@ -933,7 +998,7 @@ function QuestCard({
           return;
         }
         for (const f of files) {
-          // Proof cuma untuk verifikasi admin — kompres kecil (tekan egress).
+          // Proof cuma untuk verifikasi admin, kompres kecil (tekan egress).
           const upFile = await compressImage(f, { maxSize: 900, quality: 0.7 });
           const fd = new FormData();
           fd.append("file", upFile);
@@ -1009,6 +1074,7 @@ function QuestCard({
               height={160}
               sizes="400px"
               className="max-h-40 w-full rounded-md border object-cover"
+            unoptimized
             />
           </a>
         )}

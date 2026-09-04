@@ -6,8 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ChevronDown,
+  Heart,
   LayoutDashboard,
-  LogIn,
   LogOut,
   Settings,
   Ticket,
@@ -53,7 +53,7 @@ export function AuthNav() {
     return (
       <Button size="sm" asChild>
         <Link href={loginHref}>
-          <LogIn className="h-4 w-4" /> {t.login}
+          <Heart className="h-4 w-4" /> {t.login}
         </Link>
       </Button>
     );
@@ -72,6 +72,7 @@ export function AuthNav() {
               width={28}
               height={28}
               className="h-7 w-7 rounded-full object-cover"
+            unoptimized
             />
           ) : (
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">

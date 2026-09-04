@@ -12,9 +12,21 @@ import {
   useMyProfile,
   type NotificationRow,
 } from "@/lib/queries";
+import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/types";
+
+/**
+ * Catat klik tautan pengumuman. Sengaja fire-and-forget: klik tautan harus
+ * tetap berjalan walau pencatatan gagal, jadi errornya ditelan.
+ */
+function trackClick(notificationId: string, url: string) {
+  void api(`/api/voter/notifications/${notificationId}/click`, {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  }).catch(() => {});
+}
 
 /** Waktu relatif ringkas dalam bahasa umum (contoh: "3 jam lalu"). */
 function timeAgo(iso: string, t: Dictionary["notificationBell"]): string {
@@ -29,7 +41,58 @@ function timeAgo(iso: string, t: Dictionary["notificationBell"]): string {
   return t.daysAgo(hari);
 }
 
-/** Lonceng pemberitahuan voter — hanya tampil untuk voter yang sudah login. */
+/** Lonceng pemberitahuan voter, hanya tampil untuk voter yang sudah login. */
+/**
+ * Ubah URL di dalam teks jadi tautan yang bisa diklik. Isi notifikasi ditulis
+ * admin sebagai teks biasa (bukan HTML) supaya tak ada risiko injeksi, jadi
+ * penautan dilakukan di sisi tampilan.
+ *
+ * Menangkap alamat berawalan http(s):// maupun yang langsung menyebut domain
+ * seperti "events.stekom.ac.id/ycs2026", karena admin lazim menulis tanpa
+ * protokol.
+ */
+const URL_RE =
+  /((?:https?:\/\/|www\.)[^\s<]+|[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:id|com|net|org|ac\.id|sch\.id|co\.id)(?:\/[^\s<]*)?)/gi;
+
+/**
+ * Ubah URL di dalam teks jadi tautan. `onLinkClick` mencatat kliknya ke
+ * backend; kegagalan diabaikan supaya klik tetap jalan walau pencatatan
+ * gagal (misalnya jaringan putus).
+ */
+function Linkify({
+  text,
+  onLinkClick,
+}: {
+  text: string;
+  onLinkClick?: (url: string) => void;
+}) {
+  const parts = text.split(URL_RE);
+  return (
+    <>
+      {parts.map((part, i) => {
+        // split() dengan grup tangkap menaruh URL di indeks ganjil.
+        if (i % 2 === 0 || !part) return part;
+        const href = /^https?:\/\//i.test(part) ? part : `https://${part}`;
+        return (
+          <a
+            key={i}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onLinkClick?.(href);
+            }}
+            className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+          >
+            {part}
+          </a>
+        );
+      })}
+    </>
+  );
+}
+
 export function NotificationBell() {
   const { data: me } = useMyProfile();
   const enabled = !!me && me.role === "voter";
@@ -91,7 +154,10 @@ export function NotificationBell() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold">{n.title}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {n.body}
+                      <Linkify
+                        text={n.body}
+                        onLinkClick={(url) => trackClick(n.id, url)}
+                      />
                     </p>
                     <p className="mt-1 text-[11px] text-muted-foreground/70">
                       {timeAgo(n.created_at, t)}

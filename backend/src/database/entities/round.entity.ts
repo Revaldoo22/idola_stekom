@@ -7,7 +7,7 @@ import {
 } from "typeorm";
 
 export type RoundStatus = "draft" | "active" | "closed";
-export type RoundSchoolStatus = "active" | "lolos" | "gugur";
+export type RoundParticipantStatus = "active" | "lolos" | "gugur";
 
 /** Gelombang kompetisi. Hanya satu round berstatus 'active' pada satu waktu. */
 @Entity("rounds")
@@ -21,21 +21,30 @@ export class Round {
   @Column({ type: "text", default: "draft" })
   status!: RoundStatus;
 
-  /** Default jumlah sekolah lolos saat gelombang ditutup. */
+  /** Default jumlah peserta lolos saat gelombang ditutup. */
   @Column({ name: "top_n", type: "int", default: 1 })
   topN!: number;
 
   /**
    * Cara menentukan yang lolos saat tutup:
-   *  - 'per_region': top_n sekolah per kabupaten (default lama)
-   *  - 'global': top_n sekolah teratas lintas kabupaten (mis. 200 semifinalis)
+   *  - 'global': top_n peserta teratas lintas kabupaten (mis. 200 semifinalis)
+   *  - 'per_region': top_n peserta per kabupaten (asal sekolahnya)
    */
-  @Column({ name: "select_mode", type: "text", default: "per_region" })
+  @Column({ name: "select_mode", type: "text", default: "global" })
   selectMode!: "per_region" | "global";
 
   /** Urutan gelombang (1,2,3…). Menentukan 'gelombang berikutnya' saat tutup. */
   @Column({ name: "sequence", type: "int", default: 0 })
   sequence!: number;
+
+  /**
+   * Gelombang penutup event. Saat ditutup, TIDAK ada gelombang lanjutan yang
+   * dibuat/diaktifkan, jadi kompetisi benar-benar berakhir. Tanpa flag ini
+   * sistem akan terus menggulirkan gelombang baru selama masih ada peserta
+   * yang belum lolos.
+   */
+  @Column({ name: "is_final", type: "boolean", default: false })
+  isFinal!: boolean;
 
   @Column({ name: "starts_at", type: "timestamptz", nullable: true })
   startsAt!: Date | null;
@@ -54,25 +63,29 @@ export class Round {
   createdAt!: Date;
 }
 
-/** Keikutsertaan sekolah dalam satu gelombang + hasil akhirnya. */
-@Entity("round_schools")
-@Index("rs_uniq", ["roundId", "schoolId"], { unique: true })
-export class RoundSchool {
+/**
+ * Keikutsertaan PESERTA dalam satu gelombang + hasil akhirnya. Unit yang
+ * lolos/gugur adalah peserta, bukan sekolah. Sekolah hanya label asal
+ * peserta (dipakai untuk tampilan & filter kabupaten).
+ */
+@Entity("round_participants")
+@Index("rp_uniq", ["roundId", "participantId"], { unique: true })
+export class RoundParticipant {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
   @Column({ name: "round_id", type: "uuid" })
   roundId!: string;
 
-  @Column({ name: "school_id", type: "uuid" })
-  schoolId!: string;
+  @Column({ name: "participant_id", type: "uuid" })
+  participantId!: string;
 
   @Column({ type: "text", default: "active" })
-  status!: RoundSchoolStatus;
+  status!: RoundParticipantStatus;
 
   /**
-   * Poin bawaan gelombang. Untuk sekolah gugur yang lanjut ke gelombang
-   * susulan, diisi 50% poin akhir gelombang sebelumnya (poin peserta asli
+   * Poin bawaan gelombang. Untuk peserta gugur yang lanjut ke gelombang
+   * susulan, diisi 50% poin akhir gelombang sebelumnya (total_points peserta
    * tak diubah). Ranking round = carry_points + poin vote round ini.
    */
   @Column({ name: "carry_points", type: "int", default: 0 })

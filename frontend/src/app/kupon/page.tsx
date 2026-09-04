@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Download, Ticket } from "lucide-react";
+import { Download, PartyPopper, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
@@ -154,14 +154,14 @@ async function downloadCoupon(
     bx += wBar + 3;
   }
 
-  // Stub kanan — gambar hadiah handphone (fallback teks bila gagal dimuat)
+  // Stub kanan, gambar hadiah handphone (fallback teks bila gagal dimuat)
   const SX = STUB_X + 34;
   ctx.fillStyle = "#f97316";
   ctx.font = "800 14px Arial";
   ctx.fillText(t.canvasMainPrize, SX, TY + 60);
   const prize = await loadPrizeImage();
   if (prize) {
-    // PNG transparan — gambar langsung di atas tiket putih tanpa kotak,
+    // PNG transparan, gambar langsung di atas tiket putih tanpa kotak,
     // biar menyatu dengan latar kupon.
     const IW = 210;
     const IH = Math.round((IW * prize.height) / prize.width);
@@ -201,7 +201,7 @@ export default function CouponPage() {
   const { locale } = useLocale();
   const t = useTranslation("kupon");
   const { data: me, isLoading: loadingMe } = useMyProfile();
-  // Voter onboarded ATAU peserta (role "participant") — sama-sama punya kupon.
+  // Voter onboarded ATAU peserta (role "participant"), sama-sama punya kupon.
   const enabled =
     !!me && (me.is_participant || (me.role === "voter" && me.onboarded));
   const { data: coupons, isLoading } = useMyCoupons(enabled);
@@ -230,43 +230,63 @@ export default function CouponPage() {
           <EmptyState title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
           <div className="space-y-3">
-            {coupons.map((c) => (
-              <Card
-                key={c.code}
-                className="overflow-hidden border-primary/25"
-              >
-                <div className="flex items-stretch">
-                  {/* Kiri: identitas kupon */}
-                  <CardContent className="flex-1 space-y-2 p-5">
-                    <p className="text-xs font-bold uppercase tracking-wider text-accent">
-                      {t.couponLabel}
-                    </p>
-                    <p className="font-mono text-2xl font-extrabold tracking-wide">
-                      {c.code}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {c.owner_name} ·{" "}
-                      {new Date(c.created_at).toLocaleDateString(
-                        locale === "id" ? "id-ID" : "en-US",
-                        { day: "2-digit", month: "long", year: "numeric" },
+            {coupons.map((c) => {
+              const isWinner = !!c.won_at;
+              return (
+                <Card
+                  key={c.code}
+                  className={
+                    isWinner
+                      ? "overflow-hidden border-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.35)]"
+                      : "overflow-hidden border-primary/25"
+                  }
+                >
+                  <div className="flex items-stretch">
+                    {/* Kiri: identitas kupon */}
+                    <CardContent className="flex-1 space-y-2 p-5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-xs font-bold uppercase tracking-wider text-accent">
+                          {t.couponLabel}
+                        </p>
+                        {isWinner && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
+                            <PartyPopper className="h-3 w-3" />
+                            {t.winnerBadge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-mono text-2xl font-extrabold tracking-wide">
+                        {c.code}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {c.owner_name} ·{" "}
+                        {new Date(c.created_at).toLocaleDateString(
+                          locale === "id" ? "id-ID" : "en-US",
+                          { day: "2-digit", month: "long", year: "numeric" },
+                        )}
+                      </p>
+                      {isWinner && (
+                        <p className="text-xs font-semibold text-amber-600">
+                          {c.prize ? t.winnerNote(c.prize) : t.winnerNoteGeneric}
+                        </p>
                       )}
-                    </p>
-                  </CardContent>
-                  {/* Kanan: aksi, dipisah garis putus ala tiket */}
-                  <div className="flex w-28 flex-col items-center justify-center gap-2 border-l border-dashed bg-muted/30 p-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/hp.png"
-                      alt={t.prizeAlt}
-                      className="h-14 w-20 object-contain"
-                    />
-                    <Button size="sm" onClick={() => downloadCoupon(c, t, locale)}>
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    </CardContent>
+                    {/* Kanan: aksi, dipisah garis putus ala tiket */}
+                    <div className="flex w-28 flex-col items-center justify-center gap-2 border-l border-dashed bg-muted/30 p-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/hp.png"
+                        alt={t.prizeAlt}
+                        className="h-14 w-20 object-contain"
+                      />
+                      <Button size="sm" onClick={() => downloadCoupon(c, t, locale)}>
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
             <p className="text-center text-xs text-muted-foreground">
               {t.footerNote}
             </p>

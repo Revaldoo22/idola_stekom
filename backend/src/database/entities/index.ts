@@ -27,10 +27,22 @@ export {
 export { Notification, type NotificationType } from "./notification.entity";
 export {
   Round,
-  RoundSchool,
+  RoundParticipant,
   type RoundStatus,
-  type RoundSchoolStatus,
+  type RoundParticipantStatus,
 } from "./round.entity";
+export { Rejection, type RejectionKind } from "./rejection.entity";
+export { Announcement, AnnouncementClick } from "./announcement.entity";
+export {
+  RewardCatalog,
+  SpinPrize,
+  RewardRedemption,
+  SpinResult,
+  SpinAccount,
+  PointAdjustment,
+  type RedeemKind,
+  type SpinSource,
+} from "./reward.entity";
 
 import { School } from "./school.entity";
 import { Participant } from "./participant.entity";
@@ -45,9 +57,19 @@ import { Region } from "./region.entity";
 import { Coupon } from "./coupon.entity";
 import { CouponClaim } from "./coupon-claim.entity";
 import { Notification } from "./notification.entity";
-import { Round, RoundSchool } from "./round.entity";
+import { Round, RoundParticipant } from "./round.entity";
+import { Rejection } from "./rejection.entity";
+import { Announcement, AnnouncementClick } from "./announcement.entity";
+import {
+  RewardCatalog,
+  SpinPrize,
+  RewardRedemption,
+  SpinResult,
+  SpinAccount,
+  PointAdjustment,
+} from "./reward.entity";
 
-/** Single registration point — add new entities here once. */
+/** Single registration point, add new entities here once. */
 export const ENTITIES = [
   School,
   Participant,
@@ -63,5 +85,14 @@ export const ENTITIES = [
   CouponClaim,
   Notification,
   Round,
-  RoundSchool,
+  RoundParticipant,
+  Rejection,
+  Announcement,
+  AnnouncementClick,
+  RewardCatalog,
+  SpinPrize,
+  RewardRedemption,
+  SpinResult,
+  SpinAccount,
+  PointAdjustment,
 ];

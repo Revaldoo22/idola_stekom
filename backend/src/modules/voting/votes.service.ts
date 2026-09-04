@@ -41,7 +41,7 @@ export class VotesService {
    * Identitas voter WAJIB dari akun login (SSO Google + wizard selesai).
    * Menolak kalau belum login / belum onboarded / bukan voter. Field
    * identitas (nama/WA/email/status/sekolah/kelas) diambil dari profil,
-   * bukan dari body — jadi tak bisa dipalsukan lewat API.
+   * bukan dari body, jadi tak bisa dipalsukan lewat API.
    */
   private async resolveVoter(actorId?: string) {
     if (!actorId) throw new VoteError("LOGIN_REQUIRED");
@@ -54,7 +54,7 @@ export class VotesService {
     }
 
     // Peserta (email akun cocok record peserta) boleh vote peserta lain TANPA
-    // onboarding — identitas WA/nama/sekolah diambil dari record peserta itu,
+    // onboarding, identitas WA/nama/sekolah diambil dari record peserta itu,
     // status "peserta". Kunci: email (SSO Google). Backend = sumber kebenaran.
     if (!profile.onboarded && profile.email) {
       const rows = (await this.dataSource.query(
@@ -144,6 +144,18 @@ export class VotesService {
     });
     if (!participant) throw new VoteError("NOTFOUND");
 
+    // Golden Buzzer: sudah langsung lolos, tak perlu dukungan lagi.
+    if (participant.goldenBuzzer) throw new VoteError("GOLDEN_BUZZER");
+
+    // Peserta yang sudah lolos di gelombang mana pun tak ikut berkompetisi
+    // lagi, jadi vote ke dia ditolak (poinnya sudah final).
+    const [qualified] = (await this.dataSource.query(
+      `select 1 from round_participants
+        where participant_id = $1 and status = 'lolos' limit 1`,
+      [d.participant_id],
+    )) as unknown[];
+    if (qualified) throw new VoteError("ALREADY_QUALIFIED");
+
     // Self-vote block: voter tak boleh vote peserta yang email/WA-nya = miliknya.
     if (await this.antiCheat.isSelfVote(d.participant_id, email, phone)) {
       throw new VoteError("SELFVOTE");
@@ -165,13 +177,13 @@ export class VotesService {
       .getExists();
     if (dup) throw new VoteError("ALREADYVOTED");
 
-    // Tidak ada batasan by device/IP — dedup murni by email/WA di atas.
+    // Tidak ada batasan by device/IP, dedup murni by email/WA di atas.
 
     // Gate follow WA (2 saluran: UnivSTEKOM & YCS 2026) sebelum vote pertama.
     //  - Voter biasa: wajib follow 2 saluran WA, upload bukti. Vote masuk
-    //    sebagai PENDING — poin baru diberikan setelah admin approve.
+    //    sebagai PENDING, poin baru diberikan setelah admin approve.
     //  - PESERTA YCS: vote langsung tanpa follow WA, TAPI tetap dapat kupon.
-    // Kupon undian (hadiah HP) TIDAK terkait follow WA — itu klaim terpisah
+    // Kupon undian (hadiah HP) TIDAK terkait follow WA, itu klaim terpisah
     // (follow IG/TikTok) lewat CouponClaimsService setelah vote sukses.
     const profile = identity.profile;
     const grantCoupon = identity.isParticipant;

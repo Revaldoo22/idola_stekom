@@ -13,6 +13,8 @@ const en: Dictionary = {
     home: "Home",
     ranking: "Ranking",
     gelombang: "Standings",
+    lolos: "Qualified",
+    goldenBuzzer: "Golden Buzzer",
     logout: "Log out",
     logoutSuccess: "Logged out successfully.",
     panduan: "Guide",
@@ -20,7 +22,7 @@ const en: Dictionary = {
   },
   authNav: {
     logoutSuccess: "Logged out successfully.",
-    login: "Log in",
+    login: "Vote Now",
     supporterFallback: "Supporter",
     participantBadge: "Participant",
     adminDashboard: "Admin Dashboard",
@@ -89,9 +91,13 @@ const en: Dictionary = {
     emptyRegionScope: "No participants from your district yet",
     points: "points",
     votedBadge: "You Voted",
+    qualifiedBadge: "Qualified",
+    goldenBadge: "Golden Buzzer",
+    goldenLabel: "Golden Buzzer",
+    qualifiedLabel: "Qualified",
     pendingBadge: "Vote Pending Review",
     votedLabel: "You already voted",
-    pendingLabel: "Awaiting admin review",
+    pendingLabel: "In review, check notifications",
     supportCta: "Support",
     prev: "Previous",
     next: "Next",
@@ -221,10 +227,11 @@ const en: Dictionary = {
   },
   home: {
     badge: "Universitas STEKOM",
-    heroTitle: "Youth Character Summit 2026",
+    heroTitle: "Support Your Favorite Student in the 2026 Vote",
+    registerBacklink: "Info & Official Links",
     heroDescBold: "100% free registration, no fees whatsoever.",
     heroDesc:
-      "Support your favorite student! Pick a participant below, give your support, and help them win prizes.",
+      "Pick a participant below, give your support, and help them win prizes.",
     freeBadge: "Free - Rp0 registration fee",
     prizeBannerTag: "Raffle Prize",
     prizeBannerTitle: "Win a Smartphone from the Raffle Coupon!",
@@ -234,10 +241,10 @@ const en: Dictionary = {
     prizeDialogTitle: "How to Get a Smartphone Raffle Coupon",
     prizeDialogStep1: "Choose your favorite participant in the Participant List section below, then click Support.",
     prizeDialogStep2: "After your vote succeeds, claim your raffle coupon: follow the Universitas STEKOM account and upload proof.",
-    prizeDialogStep3: "Done! Your raffle coupon is added to your account once your proof is approved by admin — check it in the My Coupons menu.",
+    prizeDialogStep3: "Done! Your raffle coupon is added to your account once your proof is approved by admin, check it in the My Coupons menu.",
     prizeDialogCta: "Vote Now",
     rankingCta: "Current Standings",
-    joinCta: "Become a YCS Participant",
+    joinCta: "Register as a Participant",
     participantsTitle: "Participant List",
     participantsSubtitle: "Click a participant to give support & complete quests.",
     faqTitle: "Is YCS 2026 Paid?",
@@ -290,9 +297,55 @@ const en: Dictionary = {
     prizeAlt: "Smartphone prize",
     footerNote:
       "Download and save your coupon. The draw will be held by the committee at the end of the event.",
+    winnerBadge: "Winner!",
+    winnerNote: (prize: string) => `Congrats! This coupon won: ${prize}.`,
+    winnerNoteGeneric: "Congrats! This coupon was drawn as a winner.",
+  },
+  lolos: {
+    title: "Qualified Participants",
+    pointsLabel: "pts",
+    slotNote: (
+      lolos: number,
+      quota: number,
+      leftover: number,
+      nextName: string,
+      nextTotal: number,
+    ) =>
+      `${lolos} participants qualified out of ${quota} slots. The remaining ${leftover} slots are not forfeited but carried over to ${nextName}, making its quota ${nextTotal} slots.`,
+    subtitle:
+      "Participants who qualified in each round. Pick a round to see its list.",
+    emptyTitle: "No qualified participants yet",
+    emptyDescription: "Results appear after the committee closes a round.",
+    searchPlaceholder: "Search participant or school",
+    emptySearch: "Nothing matches your search",
+    count: (n: number) => `${n} qualified`,
+  },
+  goldenBuzzer: {
+    title: "Golden Buzzer",
+    subtitle:
+      "Participants chosen by the committee or judges for their unique, inspiring, and special qualities.",
+    badge: "Golden",
+    count: (n: number) => `${n} Golden Buzzer participants`,
+    note:
+      "The Golden Buzzer is awarded to participants chosen directly by the committee or judges for their unique, inspiring, and special qualities, and for being good role models for many people.",
+    congrats: "Congratulations to our Golden Buzzer winners!",
+    emptyTitle: "No Golden Buzzer yet",
+    emptyDescription: "Stay tuned for the committee's announcement.",
+  },
+  joinPopup: {
+    title: "Join YCS 2026",
+    imageAlt: "Youth Character Summit 2026 registration banner",
+    close: "Close",
   },
   gelombang: {
     schools: "schools",
+    tabTopParticipants: "Participant Ranking",
+    tabByRegion: "Explore by Region",
+    topHint: (n: number) =>
+      `Nationwide participant ranking. The top ${n} qualify for the next round.`,
+    topHintNoQuota: "Nationwide participant ranking.",
+    cutoffLine: (n: number) => `Top ${n} cut-off`,
+    participants: "participants",
     totalPoints: "Total Points",
     student: "Student",
     school: "School",
@@ -314,8 +367,9 @@ const en: Dictionary = {
     passed: "Passed",
     eliminated: "Eliminated",
     regencyChildLabel: "districts",
-    emptySchoolsInBoard: "No schools in this standings yet",
-    levelHintStudent: "This school's student leaderboard. Click a student to support them.",
+    emptySchoolsInBoard: "No participants in this standings yet",
+    levelHintStudent:
+      "This school's student leaderboard. Students qualify for the next round, not schools. Click a student to support them.",
     levelHintSchool:
       "School leaderboard for this district/city. Click a school to see its students.",
     levelHintRegency:
@@ -323,7 +377,7 @@ const en: Dictionary = {
     levelHintProvince:
       "Nationwide province leaderboard. Click a province to drill down.",
     regionPointsNote:
-      "Region points = total points of all participating schools in that region (including carried-over points from previous rounds).",
+      "Region points = total points of all participating students in that region (including carried-over points from previous rounds). Qualification is counted per student, not per school.",
   },
   onboarding: {
     stepAccount: "Account",
@@ -418,11 +472,13 @@ const en: Dictionary = {
     notFound: "Participant not found",
     zoomPhoto: (name: string) => `Zoom in on ${name}'s photo`,
     points: "points",
+    pointsInRound: (round: string) => `points in ${round}`,
+    pointsTotal: (n: string) => `${n} points total`,
     shareProfile: "Share Profile",
     shareMessage: (name: string) =>
       `Support ${name} at the Youth Character Summit, Universitas STEKOM! 🔥`,
     votedPendingReview:
-      "Already voted — your follow proof is awaiting admin review. Points will be added once approved.",
+      "Already voted, your follow proof is awaiting admin review. Points will be added once approved.",
     votedThanks: "You already voted for this participant. Thank you!",
     oneVotePerAccount: "Each account can only cast 1 vote for the entire event.",
     questSectionTitle: (name: string) =>
@@ -442,10 +498,29 @@ const en: Dictionary = {
       "Coupon claim submitted! Your follow proof is being reviewed by the admin.",
     voteSuccess: (points: number, name: string) => `+${points} submitted for ${name}`,
     eventClosed: "Event closed",
+    goldenCelebrateTitle: "Golden Buzzer!",
+    goldenCelebrateDesc:
+      "This participant was chosen directly by the committee and advances to the next stage.",
+    goldenBadgeBig: "Golden Buzzer Winner",
+    qualifiedCelebrateTitle: "Congratulations, Qualified!",
+    qualifiedCelebrateDesc: (round: string) =>
+      round
+        ? `This participant qualified in ${round} and advances to the next stage.`
+        : "This participant qualified and advances to the next stage.",
+    qualifiedBadgeBig: "Round Qualifier",
+    qualifiedNoVote: "Already Qualified",
+    goldenNoVote: "Golden Buzzer",
     support: "Support",
     followTaskDialogTitle: "Claim Your Smartphone Raffle Coupon",
     followTaskDialogDescription: (n: number) =>
-      `Your vote is in! Follow the ${n} accounts below, upload proof, then submit to claim your smartphone raffle coupon. Proof is reviewed by admin — your coupon is valid once approved.`,
+      `Your vote is in! Follow the ${n} accounts below, upload proof, then submit to claim your smartphone raffle coupon. Proof is reviewed by admin, your coupon is valid once approved.`,
+    claimTeaserTitle: "Vote Successful! 🎉",
+    claimTeaserBody:
+      "It'd be a shame to miss this, claim your raffle coupon now for a chance to win a smartphone & other exciting prizes!",
+    claimTeaserCta: "Claim Now",
+    claimTeaserLater: "Maybe Later",
+    claimCtaCard: "Claim Your Smartphone Raffle Coupon",
+    claimCtaCardDesc: "Win a smartphone & other exciting prizes!",
     screenshotProofLabel: "Screenshot Proof (you can select multiple at once)",
     files: "files",
     proofNote:
@@ -486,7 +561,12 @@ const en: Dictionary = {
       `You must follow the ${n} WhatsApp channels below before your first vote is processed. Upload proof, then submit. Your vote goes through once proof is approved by admin.`,
     sendProofAndVoteWa: (n: number) => `Submit Proof & Vote (${n} files)`,
     votePendingSuccess:
-      "Vote submitted! Your WhatsApp follow proof is being reviewed by admin — points will be added once approved.",
+      "Vote submitted! Your WhatsApp follow proof is being reviewed. Check the notification bell within 24 hours to see the result.",
+    pendingNoticeTitle: "Your vote is being reviewed",
+    pendingNoticeBody:
+      "An admin is checking your WhatsApp follow proof. Points are added once approved, usually within 24 hours. Come back tomorrow and check the notification bell at the top to see whether your vote was approved or rejected.",
+    pendingNoticeRejected:
+      "If it is rejected, you can still vote again with the correct proof.",
     chooseContentFirst: "Choose a participant's content first.",
     invalidLink: "Enter a valid post link (starting with http).",
     chooseAtLeastOneFile: "Choose at least 1 proof file.",
@@ -520,10 +600,24 @@ const en: Dictionary = {
     adminWaMessage:
       "Hello YCS Admin, I need help regarding the Youth Character Summit voting website.",
     pageTitle: "User Guide",
+    pageSubtitle: "Official Guide for Youth Character Summit Universitas STEKOM.",
     intro:
       "Follow the guide that fits you: a general supporter (friend, teacher, family, or anyone) or a YCS participant who wants to support a friend too.",
     introSupporterBold: "general supporter",
     introParticipantBold: "YCS participant",
+    tocTitle: "Table of Contents",
+    tocFree: "Free Registration",
+    tocSupporter: "For General Supporters",
+    tocParticipant: "For YCS Participants",
+    tocTimeline: "YCS 2026 Timeline",
+    tocSlot: "Slot Accumulation",
+    tocFaq: "Fee FAQ",
+    tocHelp: "Help",
+    searchPlaceholder: "Search this guide...",
+    searchClear: "Clear search",
+    searchNoResultsTitle: "No matches found",
+    searchNoResults: (query: string) =>
+      `No guide section matches "${query}". Try a different keyword or clear the search.`,
     freeTitle: "All Registration Is FREE, No Fees Whatsoever",
     freeDescBold:
       "Registration for Youth Character Summit 2026 by Universitas STEKOM is completely free, i.e. Rp0.",
@@ -598,7 +692,7 @@ const en: Dictionary = {
     participantNote2:
       "Not recognized as a participant when logging in? The email you used might be different from your registration data. Contact the admin below.",
     timelineTitle: "YCS 2026 Timeline",
-    timelineSubtitle: "The full activity schedule — join in and win!",
+    timelineSubtitle: "The full activity schedule, join in and win!",
     timelineSteps: [
       {
         title: "Registration opens July 10, 2026, free of charge",
@@ -624,7 +718,7 @@ const en: Dictionary = {
     ],
     goldenBuzzerBold: "Golden Buzzer",
     goldenBuzzerDesc:
-      "is a participant selected directly by the committee or judges for having a unique, inspiring, special quality, and who can be a good role model for many people.",
+      "is a participant selected directly by the committee or judges for having a unique, inspiring, special quality, and who can be a good role model for many people. Golden Buzzer participants qualify immediately, so they no longer receive support and their points are final.",
     semiFinalSelectionBold: "Further semi-finalist selection:",
     semiFinalSelectionDesc:
       "creating a Twibbon and a sample #AksiBaik campaign video at school, followed by a questionnaire test guided via a Zoom online meeting.",
@@ -634,6 +728,33 @@ const en: Dictionary = {
     groupRuleBold: "About Group A, B, and C:",
     groupRuleDesc:
       "these are just names for announcement phases. Participants who pass each phase are chosen from that month's registrants plus earlier registrants who haven't passed yet, so every registrant has an equal chance. Not selected this month? Your data automatically joins next month's selection.",
+    slotTitle: "Selection Results & Slot Accumulation",
+    slotSubtitle:
+      "Unfilled slots in one round are not forfeited, they carry over to the next round.",
+    slotIntro:
+      "To give participants a wider chance, the selection uses a slot accumulation scheme when a period's quota is not fully filled.",
+    slotRuleTitle: "How the scheme works",
+    slotRuleDesc:
+      "Each selection period has a set quota of participants who can qualify. Once selection and validation are complete, the number of participants meeting the requirements is compared against the available quota.",
+    slotNotBurnedBold: "Unfilled slots are not forfeited.",
+    slotNotBurnedDesc:
+      "If slots remain empty because participants are found invalid, cannot be reached, do not attend the selection stages, do not take the test on schedule, or for other reasons under the rules, those slots carry over to the next period's quota.",
+    slotExampleTitle: "Worked example",
+    slotExampleRows: [
+      { label: "August selection quota", value: "200 participants" },
+      { label: "Participants meeting requirements", value: "140 participants" },
+      { label: "Remaining slots (200 - 140)", value: "60 slots" },
+      { label: "Normal September quota", value: "200 participants" },
+      { label: "Slots carried over from August", value: "+60 slots" },
+    ],
+    slotExampleResult:
+      "The September selection quota becomes 260 participants.",
+    slotNoteTitle: "Important notes",
+    slotNotes: [
+      "Slot accumulation does not mean participants who did not qualify in an earlier period automatically qualify in the next one.",
+      "Every participant must still go through the selection process and meet all requirements that apply in that period.",
+      "Participants who did not succeed in one period may still take part in the next period's selection under the applicable rules.",
+    ],
     faqTitle: "Frequently Asked Questions About Registration Fees",
     faqSubtitle: "Quick answers about Youth Character Summit 2026 fees.",
     faq: [
@@ -651,7 +772,7 @@ const en: Dictionary = {
       },
       {
         q: "What if someone asks for money for registration?",
-        a: "Ignore it and immediately report it to the official Youth Character Summit admin via WhatsApp +62 888-8555-591. The committee never asks for payment of any kind.",
+        a: "Ignore it and immediately report it to the official Youth Character Summit admin via WhatsApp +62 878-4877-5292. The committee never asks for payment of any kind.",
       },
       {
         q: "Are the scholarships participants receive also free with no deductions?",
